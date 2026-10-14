@@ -73,3 +73,226 @@ Use the fresh-checkout instructions above if `.env` and the local database do no
 The quarterly migration preserves legacy monthly quantities, totals, and document state. Rolling it back is blocked once quarterly-only records exist, because their monthly quantities cannot be reconstructed.
 
 The focused tests cover service permissions, office budget reservations, stale versions, approval locking, price snapshots, report filters, and legacy quarterly migration. They use an in-memory SQLite database.
+
+
+## SQLite process
+
+[.env.example (line 26)]
+DB_CONNECTION=sqlite
+'''This tells Laravel to use SQLite.'''
+
+-- SQLite connection configuration --
+[config/database.php (line 19)]
+'default' => env('DB_CONNECTION', 'sqlite'),
+'''Laravel DB_CONNECTION'''
+
+## Laravel migrations create the tables
+
+---SQLite sample syntax---
+Schema::create('offices', function (Blueprint $table) {
+    $table->id();
+    $table->string('code')->unique();
+    $table->string('name');
+    $table->timestamps();
+});
+
+---SQLite into SQL---
+CREATE TABLE offices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code VARCHAR NOT NULL UNIQUE,
+    name VARCHAR NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME
+);
+
+
+
+## Table definitions
+The main system tables begin at these lines:
+- offices: [planning migration:11 (line 11)]
+CREATE TABLE offices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+
+    CONSTRAINT offices_code_unique UNIQUE (code)
+);
+
+- User role and office assignment: [planning migration:17 (line 17)]
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    email_verified_at DATETIME NULL,
+    password VARCHAR(255) NOT NULL,
+    remember_token VARCHAR(100) NULL,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+
+    office_id INTEGER NULL,
+    role VARCHAR(255) NOT NULL DEFAULT 'office',
+
+    FOREIGN KEY (office_id)
+        REFERENCES offices(id)
+        ON DELETE RESTRICT
+);
+
+- budgets: [planning migration:21 (line 21)]
+CREATE TABLE budgets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    office_id INTEGER NOT NULL,
+    fiscal_year INTEGER NOT NULL,
+    ceiling_cents INTEGER NOT NULL,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+
+    FOREIGN KEY (office_id)
+        REFERENCES offices(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT budgets_office_year_unique
+        UNIQUE (office_id, fiscal_year)
+);
+
+- catalogue_items: [planning migration:29 (line 29)]
+CREATE TABLE catalogue_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    specification TEXT NULL,
+    unit VARCHAR(40) NOT NULL,
+    category VARCHAR(255) NOT NULL,
+    expense_class VARCHAR(10) NOT NULL,
+    price_cents INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+
+    CONSTRAINT catalogue_items_code_unique UNIQUE (code),
+
+    CONSTRAINT catalogue_items_active_boolean
+        CHECK (active IN (0, 1))
+);
+
+- annual_plans: [planning migration:41 (line 41)]
+CREATE TABLE annual_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fiscal_year INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    status VARCHAR(255) NOT NULL DEFAULT 'submitted',
+    created_by INTEGER NOT NULL,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+
+    FOREIGN KEY (created_by)
+        REFERENCES users(id)
+);
+
+- plans: [planning migration:49 (line 49)]
+CREATE TABLE plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    type VARCHAR(10) NOT NULL,
+    office_id INTEGER NOT NULL,
+    fiscal_year INTEGER NOT NULL,
+    reference VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    fund_source VARCHAR(255) NOT NULL,
+    expected_output TEXT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+
+    status VARCHAR(255) NOT NULL DEFAULT 'draft',
+    version INTEGER NOT NULL DEFAULT 1,
+
+    parent_id INTEGER NULL,
+    annual_plan_id INTEGER NULL,
+    created_by INTEGER NOT NULL,
+
+    ps_cents INTEGER NOT NULL DEFAULT 0,
+    mooe_cents INTEGER NOT NULL DEFAULT 0,
+    fe_cents INTEGER NOT NULL DEFAULT 0,
+    co_cents INTEGER NOT NULL DEFAULT 0,
+    total_cents INTEGER NOT NULL DEFAULT 0,
+
+    submitted_at DATETIME NULL,
+    approved_at DATETIME NULL,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+
+    FOREIGN KEY (office_id)
+        REFERENCES offices(id)
+        ON DELETE RESTRICT,
+
+    FOREIGN KEY (parent_id)
+        REFERENCES plans(id)
+        ON DELETE RESTRICT,
+
+    FOREIGN KEY (annual_plan_id)
+        REFERENCES annual_plans(id)
+        ON DELETE RESTRICT,
+
+    FOREIGN KEY (created_by)
+        REFERENCES users(id),
+
+    CONSTRAINT plans_unique_reference
+        UNIQUE (office_id, fiscal_year, type, reference)
+);
+
+- plan_items: [planning migration:75 (line 75)]
+CREATE TABLE plan_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id INTEGER NOT NULL,
+    catalogue_item_id INTEGER NOT NULL,
+
+    code VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    specification TEXT NULL,
+    unit VARCHAR(255) NOT NULL,
+    expense_class VARCHAR(255) NOT NULL,
+    price_cents INTEGER NOT NULL,
+
+    monthly_quantities TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    total_cents INTEGER NOT NULL,
+
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+
+    FOREIGN KEY (plan_id)
+        REFERENCES plans(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (catalogue_item_id)
+        REFERENCES catalogue_items(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT plan_items_plan_catalogue_unique
+        UNIQUE (plan_id, catalogue_item_id)
+);
+
+- audit_events: [planning migration:91 (line 91)]
+CREATE TABLE audit_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NULL,
+    office_id INTEGER NULL,
+
+    subject_type VARCHAR(255) NOT NULL,
+    subject_id INTEGER NOT NULL,
+    action VARCHAR(255) NOT NULL,
+    comment TEXT NULL,
+    metadata TEXT NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE SET NULL,
+
+    FOREIGN KEY (office_id)
+        REFERENCES offices(id)
+        ON DELETE RESTRICT
+);
