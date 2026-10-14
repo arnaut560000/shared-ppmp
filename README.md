@@ -55,3 +55,21 @@ composer run dev
 ```
 
 Laravel 12 was selected for compatibility with the installed PHP 8.2 runtime. Laravel 13 requires PHP 8.3 or newer.
+
+## Planning backend foundation
+
+The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Planning controllers and React screens are not connected yet; the starter interface remains in place.
+
+PHP requires the BCMath and PDO SQLite extensions. After pulling this change into an existing local setup:
+
+```powershell
+composer install
+php artisan migrate
+composer test
+```
+
+Use the fresh-checkout instructions above if `.env` and the local database do not exist yet. Keep your existing application key and database when updating an existing installation. Do not run `migrate:fresh` to apply this update.
+
+The quarterly migration preserves legacy monthly quantities, totals, and document state. Rolling it back is blocked once quarterly-only records exist, because their monthly quantities cannot be reconstructed.
+
+The focused tests cover service permissions, office budget reservations, stale versions, approval locking, price snapshots, report filters, and legacy quarterly migration. They use an in-memory SQLite database.
