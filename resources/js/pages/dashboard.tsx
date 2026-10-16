@@ -51,9 +51,9 @@ const roleLabels: Record<string, string> = {
 
 const statusStyles: Record<string, string> = {
     draft: 'bg-slate-100 text-slate-700',
-    submitted: 'bg-amber-100 text-amber-800',
-    approved: 'bg-emerald-100 text-emerald-800',
-    returned: 'bg-rose-100 text-rose-800',
+    submitted: 'bg-yellow-100 text-yellow-900',
+    approved: 'bg-blue-100 text-blue-800',
+    returned: 'bg-red-100 text-red-800',
 };
 
 function money(cents: number): string {
@@ -75,26 +75,30 @@ export default function Dashboard({
         new Set([year, currentYear - 1, currentYear, currentYear + 1, currentYear + 2]),
     ).sort((a, b) => a - b);
 
-    const cards = [
+        const cards = [
         {
             label: 'Budget ceiling',
             value: money(stats.ceiling),
             detail: 'Total allocation for the selected year',
+            accent: 'border-t-blue-600',
         },
         {
             label: 'AIP allocations',
             value: money(stats.reserved),
             detail: 'Submitted and approved AIPs',
+            accent: 'border-t-red-500',
         },
         {
             label: 'Available for planning',
             value: money(stats.available),
             detail: 'Budget ceiling minus AIP allocations',
+            accent: 'border-t-blue-400',
         },
         {
             label: 'Awaiting review',
             value: String(stats.counts.submitted),
             detail: 'Submitted AIP and PPMP documents',
+            accent: 'border-t-yellow-400',
         },
     ];
 
@@ -105,7 +109,7 @@ export default function Dashboard({
             <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                        <p className="text-sm font-semibold text-blue-700">
                             DIGITALavera ePPRISM
                         </p>
                         <h1 className="mt-1 text-2xl font-bold">
@@ -146,7 +150,7 @@ export default function Dashboard({
                 {account.needsOffice && (
                     <div
                         role="status"
-                        className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+                                                className="rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-950"
                     >
                         Your account has no assigned office yet. An administrator
                         must assign your office before you can access its plans
@@ -154,14 +158,25 @@ export default function Dashboard({
                     </div>
                 )}
 
-                <section className="rounded-2xl bg-emerald-950 p-6 text-white md:p-8">
-                    <p className="text-sm font-medium text-emerald-200">
+                                <section className="relative overflow-hidden rounded-2xl border border-blue-200 bg-blue-50 p-6 text-blue-950 md:p-8">
+                    <div
+                        aria-hidden="true"
+                        className="absolute inset-x-0 top-0 flex h-1.5"
+                    >
+                        <span className="flex-1 bg-blue-600" />
+                        <span className="flex-1 bg-red-500" />
+                        <span className="flex-1 bg-yellow-400" />
+                    </div>
+
+                    <p className="text-sm font-semibold text-blue-700">
                         FISCAL YEAR {year}
                     </p>
+
                     <h2 className="mt-3 text-2xl font-semibold md:text-3xl">
                         From a good plan to meaningful progress.
                     </h2>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-emerald-100">
+
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
                         Keep your office requirements connected to their budget,
                         planning documents, and approval status.
                     </p>
@@ -172,7 +187,10 @@ export default function Dashboard({
                     className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
                 >
                     {cards.map((card) => (
-                        <article key={card.label} className="rounded-xl border p-5">
+                        <article
+                            key={card.label}
+                            className={`rounded-xl border border-t-4 bg-card p-5 shadow-sm ${card.accent}`}
+                        >
                             <h2 className="text-sm text-muted-foreground">
                                 {card.label}
                             </h2>
@@ -184,7 +202,7 @@ export default function Dashboard({
                     ))}
                 </section>
 
-                <section className="rounded-xl border">
+                <section className="rounded-xl border bg-card shadow-sm">
                     <div className="border-b p-5">
                         <h2 className="font-semibold">Recent plans</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -202,7 +220,7 @@ export default function Dashboard({
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-muted/50 text-muted-foreground">
+                                <thead className="bg-blue-50 text-blue-900">
                                     <tr>
                                         <th scope="col" className="px-5 py-3">Reference</th>
                                         <th scope="col" className="px-5 py-3">Plan</th>
@@ -251,7 +269,7 @@ export default function Dashboard({
                         { label: 'Approved documents', count: stats.counts.approved },
                         { label: 'Returned documents', count: stats.counts.returned },
                     ].map((item) => (
-                        <div key={item.label} className="rounded-xl border p-5">
+                        <div key={item.label} className="rounded-xl border bg-card p-5 shadow-sm">
                             <p className="text-sm text-muted-foreground">{item.label}</p>
                             <p className="mt-2 text-2xl font-semibold">{item.count}</p>
                         </div>
