@@ -20,8 +20,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('budgets', [BudgetController::class, 'store'])
         ->name('budgets.store');
 
-    Route::get('administrator', [AdministrationController::class, 'index'])
-    ->name('administration.index');
+    Route::get('administration', [AdministrationController::class, 'index'])
+        ->name('administration.index');
 
     Route::post('administration/offices', [AdministrationController::class, 'storeOffice'])
     ->name('administration.offices.store');
