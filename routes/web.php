@@ -30,6 +30,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('aips/{plan}/edit', [AipController::class, 'edit'])
         ->name('aips.edit');
 
+    Route::put('aips/{plan}', [AipController::class, 'update'])
+        ->name('aips.update');
+
     Route::get('administration', [AdministrationController::class, 'index'])
         ->name('administration.index');
 
