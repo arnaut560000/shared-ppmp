@@ -104,4 +104,15 @@ class AipTest extends TestCase
             ->assertSessionHasErrors('workflow');
         $this->assertSame(17000000, $plan->fresh()->total_cents);
     }
+
+    public function test_other_office_cannot_list_or_edit_the_plan(): void
+    {
+        $plan = $this->createDraft();
+        $other = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
+        $user = User::factory()->create(['role' => 'office', 'office_id' => $other->id]);
+        $this->actingAs($user)->get('/aips?year=2027')
+            ->assertInertia(fn (Assert $page) => $page->has('plans.data', 0));
+        $this->get("/aips/{$plan->id}/edit")->assertForbidden();
+        $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))->assertForbidden();
+    }
 }
