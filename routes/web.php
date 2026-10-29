@@ -27,6 +27,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('aips', [AipController::class, 'store'])
         ->name('aips.store');
 
+    Route::get('aips/{plan}/edit', [AipController::class, 'edit'])
+        ->name('aips.edit');
+
     Route::get('administration', [AdministrationController::class, 'index'])
         ->name('administration.index');
 
