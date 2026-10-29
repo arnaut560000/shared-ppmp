@@ -246,6 +246,17 @@ export default function Aips({ year, canWrite, offices, plans, editingId, initia
                         </select>
                     </div>
                 </header>
+                {message && (
+                    <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                        {message}
+                    </div>
+                )}
+                {canWrite && offices.length === 0 && (
+                    <div role="status" className="rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-950">
+                        No office is available for your account. An administrator must create an office and assign office users before they can
+                        prepare AIPs.
+                    </div>
+                )}
                 {canWrite && offices.length > 0 && (
                     <AipForm key={`${editingId ?? 'new'}-${initial.version}-${year}`} initial={initial} editingId={editingId} offices={offices} />
                 )}
