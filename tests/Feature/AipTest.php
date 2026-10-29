@@ -139,4 +139,14 @@ class AipTest extends TestCase
         $this->post('/aips', $this->payload())->assertSessionHasErrors('reference');
         $this->assertDatabaseCount('plans', 1);
     }
+
+    public function test_submitted_and_approved_plans_are_locked(): void
+    {
+        $plan = $this->createDraft();
+        foreach (['submitted', 'approved'] as $status) {
+            $plan->update(['status' => $status]);
+            $this->get("/aips/{$plan->id}/edit")->assertStatus(409);
+            $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))->assertStatus(409);
+        }
+    }
 }
