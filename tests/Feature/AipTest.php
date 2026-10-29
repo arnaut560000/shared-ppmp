@@ -64,4 +64,23 @@ class AipTest extends TestCase
                 ->has('offices', 0)->has('plans.data', 0));
         $this->post('/aips', $this->payload())->assertForbidden();
     }
+
+    public function test_create_recalculates_total_and_forces_office_and_draft_status(): void
+    {
+        $other = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
+        $this->actingAs($this->planner)->post('/aips', $this->payload([
+            'office_id' => $other->id,
+            'status' => 'approved',
+            'total_cents' => 1,
+        ]))->assertSessionHasNoErrors()->assertRedirect();
+
+        $plan = Plan::sole();
+        $this->assertSame($this->office->id, $plan->office_id);
+        $this->assertSame('draft', $plan->status);
+        $this->assertSame('aip', $plan->type);
+        $this->assertSame(15000025, $plan->total_cents);
+        $this->assertDatabaseHas('audit_events', ['subject_type' => 'plan', 'subject_id' => $plan->id, 'action' => 'created']);
+        $this->get('/dashboard?year=2027')->assertInertia(fn (Assert $page) => $page
+            ->where('stats.reserved', 0)->where('stats.counts.draft', 1));
+    }
 }
