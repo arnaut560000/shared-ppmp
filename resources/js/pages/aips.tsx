@@ -174,6 +174,23 @@ export default function Aips({ year, canWrite, offices, plans, editingId, initia
                             </table>
                         </div>
                     )}
+                    <div className="flex items-center justify-between border-t p-4 text-sm">
+                        <span>
+                            Page {plans.current_page} of {plans.last_page}
+                        </span>
+                        <div className="flex gap-4">
+                            {plans.prev_page_url && (
+                                <Link href={plans.prev_page_url} className="text-blue-700">
+                                    Previous
+                                </Link>
+                            )}
+                            {plans.next_page_url && (
+                                <Link href={plans.next_page_url} className="text-blue-700">
+                                    Next
+                                </Link>
+                            )}
+                        </div>
+                    </div>
                 </section>
             </div>
         </AppLayout>
