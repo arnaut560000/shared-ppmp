@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem, type SharedData } from'@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Settings, Wallet } from 'lucide-react';
+import { BookOpen, ClipboardList, Folder, LayoutGrid, Settings, Wallet } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -17,6 +17,11 @@ const mainNavItems: NavItem[] = [
         title: 'Office budgets',
         url: '/budgets',
         icon: Wallet,
+    },
+    {
+        title: 'Annual investment plans',
+        url: '/aips',
+        icon: ClipboardList,
     },
 ];
 
