@@ -127,4 +127,16 @@ class AipTest extends TestCase
         $this->get("/aips/{$plan->id}/edit")->assertForbidden();
         $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))->assertForbidden();
     }
+
+    public function test_invalid_dates_zero_total_and_duplicate_reference_are_rejected(): void
+    {
+        $this->actingAs($this->planner)->post('/aips', $this->payload(['end_date' => '2028-01-01']))
+            ->assertSessionHasErrors('end_date');
+        $this->post('/aips', $this->payload(['mooe' => '0', 'co' => '0']))
+            ->assertSessionHasErrors('workflow');
+        $this->assertDatabaseCount('plans', 0);
+        $this->createDraft();
+        $this->post('/aips', $this->payload())->assertSessionHasErrors('reference');
+        $this->assertDatabaseCount('plans', 1);
+    }
 }
