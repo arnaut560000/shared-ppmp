@@ -95,6 +95,24 @@ export default function Aips({ year, canWrite, offices, plans, editingId, initia
                         <h1 className="mt-1 text-2xl font-bold">Annual Investment Plans</h1>
                         <p className="text-muted-foreground mt-2 text-sm">Prepare your office programs, projects, and activities.</p>
                     </div>
+                    <div>
+                        <label htmlFor="aip-year" className="text-sm font-medium">
+                            Fiscal year
+                        </label>
+                        <select
+                            id="aip-year"
+                            className={fieldClass}
+                            value={year}
+                            disabled={editingId !== null}
+                            onChange={(event) => router.get('/aips', { year: Number(event.target.value) })}
+                        >
+                            {years.map((value) => (
+                                <option key={value} value={value}>
+                                    {value}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </header>
                 <section className="bg-card overflow-hidden rounded-xl border border-t-4 border-t-yellow-400 shadow-sm">
                     <div className="border-b p-5">
