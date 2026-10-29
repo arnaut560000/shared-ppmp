@@ -58,7 +58,7 @@ Laravel 12 was selected for compatibility with the installed PHP 8.2 runtime. La
 
 ## Planning backend foundation
 
-The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Planning controllers and React screens are not connected yet; the starter interface remains in place.
+The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Dashboard, administration, office budgets, and AIP draft creation/editing now have connected screens. AIP submission/review, catalogue management, PPMP screens, APP consolidation, and procurement/inventory screens remain future work.
 
 PHP requires the BCMath and PDO SQLite extensions. After pulling this change into an existing local setup:
 
@@ -74,6 +74,18 @@ The quarterly migration preserves legacy monthly quantities, totals, and documen
 
 The focused tests cover service permissions, office budget reservations, stale versions, approval locking, price snapshots, report filters, and legacy quarterly migration. They use an in-memory SQLite database.
 
+
+## AIP draft workflow
+
+Open `/aips` after signing in. Administrators and office users with an assigned office can create AIPs; other recognized roles can view the list. Office accounts see only their own office documents.
+
+1. Select the fiscal year and office, then enter a unique AIP reference, title, fund source, dates, and proposed PS/MOOE/FE/CO amounts in pesos.
+2. Save the draft. The server calculates the amount in centavos and records an audit event. Drafts do not reserve the office budget.
+3. Use Edit to update a draft or returned AIP. Office and fiscal year stay fixed. Outdated edits are rejected; submitted and approved plans are locked.
+
+After pulling this update into an already configured checkout, run `npm ci`, `npm run build`, and `php artisan migrate`. Start with `composer run dev` and open http://127.0.0.1:8001/aips. Each checkout has its own local database; GitHub does not synchronize users, offices, or budgets.
+
+Run `php artisan test --filter=AipTest` for HTTP checks covering creation, editing, office privacy, reviewer permissions, validation, and document locking. Submission and approval buttons are not part of this update.
 
 ## SQLite process
 
