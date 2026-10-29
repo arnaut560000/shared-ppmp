@@ -1,6 +1,6 @@
 # Laravel + React
 
-Laravel 12 with React 19, Inertia 2, TypeScript, Tailwind CSS 4, and Vite. Based on the official Laravel React starter kit, with registration, login, password reset, profile settings, and an authenticated dashboard.
+Laravel 12 with React 19, Inertia 2, TypeScript, Tailwind CSS 4, and Vite. Based on the official Laravel React starter kit, with registration, login, password reset, profile settings, and Annual Investment Plans as the main authenticated feature.
 
 ## Local development
 
@@ -12,7 +12,7 @@ For a fresh clone, complete the setup steps below first. Once dependencies, the 
 composer run dev
 ```
 
-Open http://127.0.0.1:8001. This starts Laravel on port 8001, the queue worker, and Vite on port 5174. Press Ctrl+C to stop them. Register an account to access the dashboard.
+Open http://127.0.0.1:8001. This starts Laravel on port 8001, the queue worker, and Vite on port 5174. Press Ctrl+C to stop them. Register an account to access Annual Investment Plans. An administrator assigns office access.
 
 Port 8000 remains available for other local projects. Use the full address above for this project. The ports are fixed so a conflict produces an error instead of silently moving the app to another address. This project also uses its own session cookie, `ppmp_test_session`.
 
@@ -58,7 +58,7 @@ Laravel 12 was selected for compatibility with the installed PHP 8.2 runtime. La
 
 ## Planning backend foundation
 
-The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Dashboard, administration, office budgets, and AIP draft creation/editing now have connected screens. AIP submission/review, catalogue management, PPMP screens, APP consolidation, and procurement/inventory screens remain future work.
+The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. Dashboard and Office Budgets pages, controllers, and routes have been removed; login and account-verification flows now lead to /aips. AIP submission/review, catalogue management, PPMP screens, APP consolidation, and procurement/inventory screens remain future work.
 
 PHP requires the BCMath and PDO SQLite extensions. After pulling this change into an existing local setup:
 
@@ -74,6 +74,8 @@ The quarterly migration preserves legacy monthly quantities, totals, and documen
 
 The focused tests cover service permissions, office budget reservations, stale versions, approval locking, price snapshots, report filters, and legacy quarterly migration. They use an in-memory SQLite database.
 
+
+Existing users, office assignments, AIPs, and budget records are preserved. The Budget model and historical migrations remain because the shared planning service still contains budget-dependent submission rules; this reset removes the budget-management interface, not stored records.
 
 ## AIP draft workflow
 

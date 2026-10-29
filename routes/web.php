@@ -2,8 +2,6 @@
 
 use App\Http\Controllers\AdministrationController;
 use App\Http\Controllers\AipController;
-use App\Http\Controllers\BudgetController;
-use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -12,15 +10,6 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', DashboardController::class)
-        ->name('dashboard');
-
-    Route::get('budgets', [BudgetController::class, 'index'])
-        ->name('budgets.index');
-
-    Route::post('budgets', [BudgetController::class, 'store'])
-        ->name('budgets.store');
-
     Route::get('aips', [AipController::class, 'index'])
         ->name('aips.index');
 

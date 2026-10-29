@@ -2,22 +2,12 @@ import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem, type SharedData } from'@/types';
+import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, ClipboardList, Folder, LayoutGrid, Settings, Wallet } from 'lucide-react';
+import { BookOpen, ClipboardList, Folder, Settings } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        url: '/dashboard',
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Office budgets',
-        url: '/budgets',
-        icon: Wallet,
-    },
     {
         title: 'Annual investment plans',
         url: '/aips',
@@ -39,17 +29,18 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-
     const { auth } = usePage<SharedData>().props;
 
     const navigation: NavItem[] = [
         ...mainNavItems,
         ...(auth.user.role === 'admin'
-            ? [{
-                title: 'Administation',
-                url: '/administration',
-                icon: Settings,
-            }]
+            ? [
+                  {
+                      title: 'Administation',
+                      url: '/administration',
+                      icon: Settings,
+                  },
+              ]
             : []),
     ];
 
@@ -59,7 +50,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
+                            <Link href="/aips" prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>

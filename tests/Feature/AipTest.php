@@ -80,8 +80,8 @@ class AipTest extends TestCase
         $this->assertSame('aip', $plan->type);
         $this->assertSame(15000025, $plan->total_cents);
         $this->assertDatabaseHas('audit_events', ['subject_type' => 'plan', 'subject_id' => $plan->id, 'action' => 'created']);
-        $this->get('/dashboard?year=2027')->assertInertia(fn (Assert $page) => $page
-            ->where('stats.reserved', 0)->where('stats.counts.draft', 1));
+        $this->get('/aips?year=2027')->assertInertia(fn (Assert $page) => $page
+            ->component('aips')->has('plans.data', 1)->where('plans.data.0.status', 'draft'));
     }
 
     public function test_edit_form_and_update_preserve_office_and_year_and_reject_stale_updates(): void
