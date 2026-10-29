@@ -115,4 +115,16 @@ class AipTest extends TestCase
         $this->get("/aips/{$plan->id}/edit")->assertForbidden();
         $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))->assertForbidden();
     }
+
+    public function test_budget_role_can_list_but_cannot_create_or_edit(): void
+    {
+        $plan = $this->createDraft();
+        $reviewer = User::factory()->create(['role' => 'budget']);
+        $this->actingAs($reviewer)->get('/aips?year=2027')
+            ->assertInertia(fn (Assert $page) => $page->where('canWrite', false)
+                ->has('plans.data', 1)->where('plans.data.0.can_edit', false));
+        $this->post('/aips', $this->payload())->assertForbidden();
+        $this->get("/aips/{$plan->id}/edit")->assertForbidden();
+        $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))->assertForbidden();
+    }
 }
