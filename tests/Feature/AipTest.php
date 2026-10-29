@@ -83,4 +83,25 @@ class AipTest extends TestCase
         $this->get('/dashboard?year=2027')->assertInertia(fn (Assert $page) => $page
             ->where('stats.reserved', 0)->where('stats.counts.draft', 1));
     }
+
+    public function test_edit_form_and_update_preserve_office_and_year_and_reject_stale_updates(): void
+    {
+        $plan = $this->createDraft();
+        $other = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
+        $this->get("/aips/{$plan->id}/edit")->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('aips')->where('editingId', $plan->id)->where('initial.mooe', '100000.25'));
+
+        $this->put("/aips/{$plan->id}", $this->payload([
+            'version' => 1, 'mooe' => '120000', 'office_id' => $other->id, 'fiscal_year' => 2028,
+        ]))->assertSessionHasNoErrors()->assertRedirect();
+        $plan->refresh();
+        $this->assertSame(17000000, $plan->total_cents);
+        $this->assertSame($this->office->id, $plan->office_id);
+        $this->assertSame(2027, $plan->fiscal_year);
+        $this->assertSame(2, $plan->version);
+
+        $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))
+            ->assertSessionHasErrors('workflow');
+        $this->assertSame(17000000, $plan->fresh()->total_cents);
+    }
 }
