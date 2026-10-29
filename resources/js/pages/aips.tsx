@@ -81,6 +81,138 @@ function money(cents: number): string {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(cents / 100);
 }
 
+function AipForm({ initial, offices, editingId }: { initial: AipData; offices: Office[]; editingId: number | null }) {
+    const form = useForm<AipData>(initial);
+    const totalCents = amounts.reduce((total, field) => {
+        const value = Number(form.data[field.key]);
+        return total + (Number.isFinite(value) ? Math.round(value * 100) : 0);
+    }, 0);
+
+    return (
+        <section className="bg-card rounded-xl border border-t-4 border-t-blue-600 p-5 shadow-sm">
+            <h2 className="text-lg font-semibold">{editingId ? 'Edit AIP' : 'Create AIP draft'}</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+                Fiscal year {initial.fiscal_year}. Saving a draft does not reserve your office budget.
+            </p>
+            <form
+                className="mt-5 space-y-5"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    if (editingId) {
+                        form.put(`/aips/${editingId}`, { preserveScroll: true });
+                    } else {
+                        form.post('/aips', { preserveScroll: true, onSuccess: () => form.reset() });
+                    }
+                }}
+            >
+                <div>
+                    <label htmlFor="aip-office" className="text-sm font-medium">
+                        Office
+                    </label>
+                    <select
+                        id="aip-office"
+                        className={fieldClass}
+                        value={form.data.office_id}
+                        disabled={editingId !== null}
+                        required
+                        onChange={(event) => form.setData('office_id', event.target.value)}
+                    >
+                        <option value="">Select an office</option>
+                        {offices.map((office) => (
+                            <option key={office.id} value={office.id}>
+                                {office.code} — {office.name}
+                            </option>
+                        ))}
+                    </select>
+                    <InputError message={form.errors.office_id} className="mt-1" />
+                    <InputError message={form.errors.fiscal_year} className="mt-1" />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                    {fields.map((field) => (
+                        <div key={field.key}>
+                            <label htmlFor={`aip-${field.key}`} className="text-sm font-medium">
+                                {field.label}
+                            </label>
+                            <input
+                                id={`aip-${field.key}`}
+                                type={field.type}
+                                className={fieldClass}
+                                value={form.data[field.key]}
+                                required
+                                maxLength={'maxLength' in field ? field.maxLength : undefined}
+                                min={field.type === 'date' ? `${initial.fiscal_year}-01-01` : undefined}
+                                max={field.type === 'date' ? `${initial.fiscal_year}-12-31` : undefined}
+                                onChange={(event) => form.setData(field.key, event.target.value)}
+                            />
+                            <InputError message={form.errors[field.key]} className="mt-1" />
+                        </div>
+                    ))}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                    {(
+                        [
+                            { key: 'description', label: 'Description' },
+                            { key: 'expected_output', label: 'Expected output' },
+                        ] as const
+                    ).map((field) => (
+                        <div key={field.key}>
+                            <label htmlFor={`aip-${field.key}`} className="text-sm font-medium">
+                                {field.label}
+                            </label>
+                            <textarea
+                                id={`aip-${field.key}`}
+                                className={fieldClass}
+                                rows={3}
+                                maxLength={5000}
+                                value={form.data[field.key]}
+                                onChange={(event) => form.setData(field.key, event.target.value)}
+                            />
+                            <InputError message={form.errors[field.key]} className="mt-1" />
+                        </div>
+                    ))}
+                </div>
+                <fieldset className="rounded-xl border p-4">
+                    <legend className="px-2 text-sm font-semibold">Proposed amounts in PHP</legend>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {amounts.map((field) => (
+                            <div key={field.key}>
+                                <label htmlFor={`aip-${field.key}`} className="text-sm font-medium">
+                                    {field.label}
+                                </label>
+                                <input
+                                    id={`aip-${field.key}`}
+                                    type="number"
+                                    min="0"
+                                    max="10000000000"
+                                    step="0.01"
+                                    required
+                                    className={fieldClass}
+                                    value={form.data[field.key]}
+                                    onChange={(event) => form.setData(field.key, event.target.value)}
+                                />
+                                <InputError message={form.errors[field.key]} className="mt-1" />
+                            </div>
+                        ))}
+                    </div>
+                    <p className="mt-5 rounded-lg bg-blue-50 p-4 text-lg font-semibold text-blue-900">Proposed total: {money(totalCents)}</p>
+                </fieldset>
+                <InputError message={form.errors.workflow} />
+                <InputError message={form.errors.version} />
+                <div className="flex flex-wrap items-center gap-4">
+                    <button type="submit" className={buttonClass} disabled={form.processing}>
+                        {form.processing ? 'Saving...' : editingId ? 'Save changes' : 'Save draft'}
+                    </button>
+                    {editingId && (
+                        <Link href={`/aips?year=${initial.fiscal_year}`} className="text-sm font-medium text-blue-700">
+                            Cancel editing
+                        </Link>
+                    )}
+                </div>
+            </form>
+        </section>
+    );
+}
+
 export default function Aips({ year, canWrite, offices, plans, editingId, initial, message }: Props) {
     const currentYear = new Date().getFullYear();
     const years = Array.from(new Set([year, currentYear - 1, currentYear, currentYear + 1, currentYear + 2])).sort((a, b) => a - b);
@@ -114,6 +246,9 @@ export default function Aips({ year, canWrite, offices, plans, editingId, initia
                         </select>
                     </div>
                 </header>
+                {canWrite && offices.length > 0 && (
+                    <AipForm key={`${editingId ?? 'new'}-${initial.version}-${year}`} initial={initial} editingId={editingId} offices={offices} />
+                )}
                 <section className="bg-card overflow-hidden rounded-xl border border-t-4 border-t-yellow-400 shadow-sm">
                     <div className="border-b p-5">
                         <h2 className="font-semibold">AIPs for {year}</h2>
