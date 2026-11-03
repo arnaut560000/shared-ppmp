@@ -18,6 +18,22 @@ class Plan extends Model
         'version' => 'integer',
     ];
 
+    public function parentPpa()
+    {
+        return $this->belongsTo(Plan::class, 'parent_ppa_id');
+    }
+
+    public function subPpas()
+    {
+        return $this->hasMany(Plan::class, 'parent_ppa_id')
+            ->where('type', 'aip');
+    }
+
+    public function aipDocument()
+    {
+        return $this->belongsTo(AipDocument::class);
+    }
+
     public function office()
     {
         return $this->belongsTo(Office::class);
