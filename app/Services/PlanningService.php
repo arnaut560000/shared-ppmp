@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AipDocument;
 use App\Models\AuditEvent;
 use App\Models\Budget;
 use App\Models\CatalogueItem;
@@ -51,6 +52,7 @@ class PlanningService
     ): Plan {
         return DB::transaction(function () use ($user, $data, $existing) {
             PlanningAccess::roles($user, ['admin', 'office']);
+            $parentPpa = PpaHierarchy::prepare($user, $data, $existing);
 
             if ($existing) {
                 $existing = Plan::whereKey($existing->id)
@@ -160,6 +162,14 @@ class PlanningService
                 $data['parent_id'] = null;
             }
 
+            if ($data['type'] === 'aip') {
+                PpaHierarchy::validateAmounts(
+                    $amounts,
+                    $parentPpa,
+                    $existing
+                );
+            }
+
             if (array_sum($amounts) <= 0) {
                 self::fail('The plan total must be greater than zero.');
             }
@@ -178,6 +188,11 @@ class PlanningService
                     'start_date',
                     'end_date',
                     'parent_id',
+                    'parent_ppa_id',
+                    'program_name',
+                    'sector',
+                    'sub_sector',
+                    'division',
                 ])
             );
 
@@ -186,6 +201,14 @@ class PlanningService
                 ...$amounts,
                 'total_cents' => array_sum($amounts),
             ];
+
+            if ($data['type'] === 'aip') {
+                $document = AipDocument::firstOrCreate([
+                    'office_id' => $data['office_id'],
+                    'fiscal_year' => $data['fiscal_year'],
+                ], ['title' => 'Annual Investment Plan '.$data['fiscal_year']]);
+                $fields['aip_document_id'] = $document->id;
+            }
 
             if ($existing) {
                 $existing->update([
@@ -250,6 +273,12 @@ class PlanningService
 
             PlanningAccess::view($user, $plan);
 
+            if ($plan->parent_ppa_id !== null) {
+                self::fail(
+                    'Sub-PPAs are allocation breakdowns. Review the main PPA instead.'
+                );
+            }
+
             if ($plan->version !== $version) {
                 self::fail(
                     'This plan changed. Reload the page before continuing.'
@@ -265,7 +294,7 @@ class PlanningService
                 }
 
                 if ($plan->type === 'aip') {
-                    $reserved = Plan::where('type', 'aip')
+                    $reserved = Plan::where('type', 'aip')->whereNull('parent_ppa_id')
                         ->where('office_id', $plan->office_id)
                         ->where('fiscal_year', $plan->fiscal_year)
                         ->whereIn('status', ['submitted', 'approved'])
