@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdministrationController;
 use App\Http\Controllers\AipController;
+use App\Http\Controllers\AipDocumentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -10,8 +11,15 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('aips', [AipController::class, 'index'])
+    Route::get('aips', [AipDocumentController::class, 'index'])
         ->name('aips.index');
+
+    Route::get('aips/offices/{office}', [AipController::class, 'workspace'])->name('aips.offices.workspace');
+
+    Route::post('aips/documents', [AipDocumentController::class, 'store'])->name('aips.documents.store');
+    Route::get('aips/documents/{document}', [AipController::class, 'show'])->name('aips.documents.show');
+    Route::get('aips/{plan}/sub-ppas/create', [AipController::class, 'createSub'])->name('aips.sub-ppas.create');
+    Route::get('aips/{plan}/view', [AipController::class, 'view'])->name('aips.view');
 
     Route::post('aips', [AipController::class, 'store'])
         ->name('aips.store');
