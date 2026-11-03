@@ -2,10 +2,10 @@
 
 namespace Tests;
 
+use App\Models\Budget;
 use App\Models\Office;
 use App\Models\Plan;
 use App\Models\User;
-use App\Services\PlanningService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 abstract class PpaTestCase extends TestCase
@@ -21,8 +21,10 @@ abstract class PpaTestCase extends TestCase
         parent::setUp();
         $office = Office::create(['code' => 'ICT', 'name' => 'ICT Office']);
         $this->planner = User::factory()->create(['role' => 'office', 'office_id' => $office->id]);
-        $this->main = app(PlanningService::class)->save($this->planner, $this->data());
         $this->actingAs($this->planner);
+        $this->post('/aips', $this->data())->assertSessionHasNoErrors();
+        $this->main = Plan::where('type', 'program')->sole();
+        Budget::create(['office_id' => $office->id, 'fiscal_year' => 2027, 'ceiling_cents' => 1000000]);
     }
 
     protected function data(array $changes = []): array

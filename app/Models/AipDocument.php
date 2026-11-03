@@ -15,14 +15,14 @@ class AipDocument extends Model
         return $this->belongsTo(Office::class);
     }
 
+    public function programs()
+    {
+        return $this->hasMany(Plan::class)->where('type', 'program');
+    }
+
     public function ppas()
     {
         return $this->hasMany(Plan::class)->where('type', 'aip');
-    }
-
-    public function mainPpas()
-    {
-        return $this->ppas()->whereNull('parent_ppa_id');
     }
 
     public function scopeVisibleTo($query, User $user)

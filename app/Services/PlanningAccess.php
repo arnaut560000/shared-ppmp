@@ -15,7 +15,8 @@ class PlanningAccess
     public static function view(User $user, Plan $plan): void
     {
         abort_if(
-            $user->role === 'office' && $user->office_id !== $plan->office_id,
+            $user->role === 'office'
+                && $user->office_id !== $plan->office_id,
             403
         );
     }
@@ -25,23 +26,26 @@ class PlanningAccess
         self::roles($user, ['office', 'admin']);
         self::view($user, $plan);
 
-        if ($plan->parent_ppa_id !== null) {
-            $parent = $plan->parentPpa;
+        // Headings organize PPAs; they have no financial approval status.
+        if ($plan->type === 'program') {
+            return;
+        }
+
+        if ($plan->type === 'aip') {
+            $program = $plan->parentPpa;
 
             abort_unless(
-                $parent
-                    && $parent->type === 'aip'
-                    && $parent->parent_ppa_id === null
-                    && $parent->office_id === $plan->office_id
-                    && $parent->fiscal_year === $plan->fiscal_year
-                    && in_array($parent->status, ['draft', 'returned'], true),
+                $program
+                    && $program->type === 'program'
+                    && $program->office_id === $plan->office_id
+                    && $program->fiscal_year === $plan->fiscal_year,
                 409,
-                'The main PPA is locked or its relationship is invalid.'
+                'This PPA has an invalid program relationship.'
             );
         }
 
         abort_unless(
-            in_array($plan->status, ['draft', 'returned']),
+            in_array($plan->status, ['draft', 'returned'], true),
             409,
             'This document is locked.'
         );

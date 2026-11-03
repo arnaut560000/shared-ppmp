@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Budget;
 use App\Models\Plan;
 use App\Models\User;
 
@@ -12,91 +13,121 @@ class PpaHierarchy
         array &$data,
         ?Plan $existing
     ): ?Plan {
-        $type = $existing?->type ?? $data['type'];
-
-        if ($type !== 'aip') {
+        if (($existing?->type ?? $data['type']) !== 'aip') {
             return null;
         }
 
-        // Existing PPAs cannot be moved to another parent.
-        $parentId = $existing
+        $programId = $existing
             ? $existing->parent_ppa_id
             : ($data['parent_ppa_id'] ?? null);
 
-        $data['parent_ppa_id'] = $parentId ?: null;
-
-        if (! $parentId) {
-            return null;
-        }
-
-        // All writes to the same family lock its main PPA first.
-        $parent = Plan::whereKey($parentId)
+        $program = Plan::whereKey($programId)
+            ->where('type', 'program')
             ->lockForUpdate()
             ->first();
 
-        if (
-            ! $parent
-            || $parent->type !== 'aip'
-            || $parent->parent_ppa_id !== null
-        ) {
-            PlanningService::fail('Select a main PPA as the parent.');
+        if (! $program) {
+            PlanningService::fail('Select a program heading for this PPA.');
         }
 
-        PlanningAccess::edit($user, $parent);
+        PlanningAccess::view($user, $program);
 
-        $officeId = $existing?->office_id ?? (int) $data['office_id'];
-        $year = $existing?->fiscal_year ?? (int) $data['fiscal_year'];
+        $officeId = (int) ($existing?->office_id ?? $data['office_id']);
+        $year = (int) ($existing?->fiscal_year ?? $data['fiscal_year']);
 
         if (
-            $parent->office_id !== $officeId
-            || $parent->fiscal_year !== $year
+            $program->office_id !== $officeId
+            || $program->fiscal_year !== $year
         ) {
             PlanningService::fail(
-                'The main PPA must belong to the same department and fiscal year.'
+                'The program heading must belong to the same office and fiscal year.'
             );
         }
 
-        return $parent;
+        $data['parent_ppa_id'] = $program->id;
+        $data['program_name'] = $program->title;
+
+        return $program;
     }
 
     public static function validateAmounts(
         array $amounts,
-        ?Plan $parent,
+        ?Plan $program,
         ?Plan $existing
     ): void {
-        if ($parent) {
-            foreach ($amounts as $field => $amount) {
-                $allocated = (int) $parent->subPpas()
-                    ->when(
-                        $existing,
-                        fn ($query) => $query->where('id', '!=', $existing->id)
-                    )
+        if (! $program) {
+            PlanningService::fail('This PPA needs a program heading.');
+        }
+
+        $budget = Budget::where('office_id', $program->office_id)
+            ->where('fiscal_year', $program->fiscal_year)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $budget) {
+            PlanningService::fail(
+                'The Budget Office must assign an office budget for this fiscal year first.'
+            );
+        }
+
+        // All PPA allocations count, including drafts and returned PPAs.
+        // Program headings and PPMPs are not counted here.
+        $allocated = (int) Plan::where('type', 'aip')
+            ->where('office_id', $program->office_id)
+            ->where('fiscal_year', $program->fiscal_year)
+            ->when($existing, fn ($query) => $query->where('id', '!=', $existing->id))
+            ->sum('total_cents');
+
+        $available = $budget->ceiling_cents - $allocated;
+
+        if (array_sum($amounts) > $available) {
+            PlanningService::fail(
+                'This PPA exceeds the remaining office budget. '
+                .'Available for this PPA: PHP '
+                .number_format(max(0, $available) / 100, 2).'.'
+            );
+        }
+
+        // Existing procurement requirements must still fit after a PPA edit.
+        if ($existing) {
+            foreach (['mooe_cents', 'co_cents'] as $field) {
+                $required = (int) Plan::where('type', 'ppmp')
+                    ->where('parent_id', $existing->id)
                     ->sum($field);
 
-                if ($allocated + $amount > $parent->$field) {
-                    $label = strtoupper(str_replace('_cents', '', $field));
-
+                if ($amounts[$field] < $required) {
                     PlanningService::fail(
-                        "Sub-PPA amounts exceed the main PPA's {$label} allocation."
+                        'The PPA allocation cannot be reduced below its existing PPMP '
+                        .strtoupper(str_replace('_cents', '', $field))
+                        .' requirements.'
                     );
                 }
             }
-
-            return;
         }
+    }
 
-        // A main allocation cannot be reduced below its existing breakdown.
-        if ($existing) {
-            foreach ($amounts as $field => $amount) {
-                $allocated = (int) $existing->subPpas()->sum($field);
+    public static function validateProcurement(
+        array $amounts,
+        int $ppaId,
+        ?Plan $existing
+    ): void {
+        $ppa = Plan::whereKey($ppaId)
+            ->where('type', 'aip')
+            ->lockForUpdate()
+            ->firstOrFail();
 
-                if ($amount < $allocated) {
-                    $label = strtoupper(str_replace('_cents', '', $field));
+        foreach (['mooe_cents', 'co_cents'] as $field) {
+            $allocated = (int) Plan::where('type', 'ppmp')
+                ->where('parent_id', $ppa->id)
+                ->when($existing, fn ($query) => $query->where('id', '!=', $existing->id))
+                ->sum($field);
 
-                    PlanningService::fail(
-                        "The main PPA's {$label} allocation cannot be below its sub-PPA total."
-                    );
-                }
+            if ($allocated + $amounts[$field] > $ppa->$field) {
+                PlanningService::fail(
+                    'PPMP requirements exceed this PPA’s '
+                    .strtoupper(str_replace('_cents', '', $field))
+                    .' allocation.'
+                );
             }
         }
     }

@@ -33,7 +33,7 @@ class AipDocumentController extends Controller
                 ->orderBy('name')->get(['id', 'code', 'name']),
             'documents' => AipDocument::query()->visibleTo($user)
                 ->where('fiscal_year', $year)->with('office:id,code,name')
-                ->withCount('ppas')->withSum('mainPpas as ppas_sum_total_cents', 'total_cents')
+                ->withCount('ppas')->withSum('ppas', 'total_cents')
                 ->orderBy('office_id')->paginate(15)->withQueryString(),
             'message' => $request->session()->get('success'),
         ]);
@@ -64,6 +64,6 @@ class AipDocumentController extends Controller
         });
 
         return to_route('aips.documents.show', $document)
-            ->with('success', $document->wasRecentlyCreated ? 'Annual plan created. Add your first PPA below.' : 'Your existing annual plan is ready.');
+            ->with('success', $document->wasRecentlyCreated ? 'Annual plan created. Add your first program heading below.' : 'Your existing annual plan is ready.');
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AipDocument;
+use App\Models\Budget;
 use App\Models\Office;
 use App\Models\Plan;
 use App\Models\User;
@@ -18,16 +19,23 @@ class AipTest extends TestCase
 
     private User $planner;
 
+    private Plan $program;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->office = Office::create(['code' => 'ICT', 'name' => 'ICT Office']);
         $this->planner = User::factory()->create(['role' => 'office', 'office_id' => $this->office->id]);
+        $this->actingAs($this->planner)->post('/aips', ['office_id' => $this->office->id, 'fiscal_year' => 2027, 'reference' => 'PROGRAM', 'title' => 'Public information']);
+        $this->program = Plan::where('type', 'program')->sole();
+        Budget::create(['office_id' => $this->office->id, 'fiscal_year' => 2027, 'ceiling_cents' => 50000000]);
+        auth()->forgetGuards();
     }
 
     private function payload(array $overrides = []): array
     {
         return array_replace([
+            'parent_ppa_id' => $this->program->id,
             'office_id' => $this->office->id,
             'fiscal_year' => 2027,
             'reference' => 'AIP-ICT-2027-001',
@@ -50,7 +58,7 @@ class AipTest extends TestCase
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('aips.documents.show', AipDocument::sole()->id));
 
-        return Plan::sole();
+        return Plan::where('type', 'aip')->sole();
     }
 
     public function test_guest_is_redirected_and_unassigned_office_gets_no_data(): void
@@ -75,14 +83,14 @@ class AipTest extends TestCase
             'total_cents' => 1,
         ]))->assertSessionHasNoErrors()->assertRedirect();
 
-        $plan = Plan::sole();
+        $plan = Plan::where('type', 'aip')->sole();
         $this->assertSame($this->office->id, $plan->office_id);
         $this->assertSame('draft', $plan->status);
         $this->assertSame('aip', $plan->type);
         $this->assertSame(15000025, $plan->total_cents);
         $this->assertDatabaseHas('audit_events', ['subject_type' => 'plan', 'subject_id' => $plan->id, 'action' => 'created']);
         $this->get('/aips/documents/'.$plan->aip_document_id)->assertInertia(fn (Assert $page) => $page
-            ->component('ppas')->has('plans.data', 1)->where('plans.data.0.status', 'draft'));
+            ->component('ppas')->has('plans.data', 1)->where('plans.data.0.children.0.status', 'draft'));
     }
 
     public function test_edit_form_and_update_preserve_office_and_year_and_reject_stale_updates(): void
@@ -123,7 +131,7 @@ class AipTest extends TestCase
         $reviewer = User::factory()->create(['role' => 'budget']);
         $this->actingAs($reviewer)->get('/aips/documents/'.$plan->aip_document_id)
             ->assertInertia(fn (Assert $page) => $page->where('canWrite', false)
-                ->has('plans.data', 1)->where('plans.data.0.can_edit', false));
+                ->has('plans.data', 1)->where('plans.data.0.children.0.can_edit', false));
         $this->post('/aips', $this->payload())->assertForbidden();
         $this->get("/aips/{$plan->id}/edit")->assertForbidden();
         $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))->assertForbidden();
@@ -135,10 +143,10 @@ class AipTest extends TestCase
             ->assertSessionHasErrors('end_date');
         $this->post('/aips', $this->payload(['mooe' => '0', 'co' => '0']))
             ->assertSessionHasErrors('workflow');
-        $this->assertDatabaseCount('plans', 0);
+        $this->assertDatabaseCount('plans', 1);
         $this->createDraft();
         $this->post('/aips', $this->payload())->assertSessionHasErrors('reference');
-        $this->assertDatabaseCount('plans', 1);
+        $this->assertDatabaseCount('plans', 2);
     }
 
     public function test_submitted_and_approved_plans_are_locked(): void

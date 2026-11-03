@@ -75,7 +75,7 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                     </form>
                 </header>
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-                    Department accounts open their own PPA workspace automatically. Annual plans are created when the first PPA is saved.
+                    Department accounts open their own PPA workspace automatically. Annual plans are created when the first program heading is saved.
                 </div>
                 {message && (
                     <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
@@ -90,7 +90,7 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                 )}
                 {canWrite && offices.length > 0 && (
                     <section className="bg-card rounded-xl border p-5">
-                        <h2 className="font-semibold">Add a PPA for a department</h2>
+                        <h2 className="font-semibold">Open a department's planning workspace</h2>
                         <p className="text-muted-foreground mt-1 text-sm">
                             Administrator access. Department users work only in their assigned office.
                         </p>
@@ -101,7 +101,7 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                                         {office.code} — {office.name}
                                     </span>
                                     <Link className={buttonClass} href={`/aips/offices/${office.id}?year=${year}&create=1`}>
-                                        Add PPA<span className="sr-only"> for {office.name}</span>
+                                        Add program heading<span className="sr-only"> for {office.name}</span>
                                     </Link>
                                 </li>
                             ))}

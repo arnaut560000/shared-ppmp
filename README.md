@@ -58,7 +58,7 @@ Laravel 12 was selected for compatibility with the installed PHP 8.2 runtime. La
 
 ## Planning backend foundation
 
-The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. Dashboard and Office Budgets pages, controllers, and routes have been removed; login and account-verification flows now lead to /aips. AIP submission/review, catalogue management, PPMP screens, APP consolidation, and procurement/inventory screens remain future work.
+The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. The Dashboard remains removed; office budget allocation is available to Budget Office and Admin. Login and account-verification flows lead to /aips. AIP submission/review, catalogue management, PPMP screens, APP consolidation, and procurement/inventory screens remain future work.
 
 PHP requires the BCMath and PDO SQLite extensions. After pulling this change into an existing local setup:
 
@@ -75,22 +75,18 @@ The quarterly migration preserves legacy monthly quantities, totals, and documen
 The focused tests cover service permissions, office budget reservations, stale versions, approval locking, price snapshots, report filters, and legacy quarterly migration. They use an in-memory SQLite database.
 
 
-Existing users, office assignments, AIPs, and budget records are preserved. The Budget model and historical migrations remain because the shared planning service still contains budget-dependent submission rules; this reset removes the budget-management interface, not stored records.
+## Office budgets, program headings and PPAs
 
-## Annual plan and PPA workflow
+1. Admin or Budget Office opens **Office budget allocations** and assigns an amount per department and fiscal year.
+2. Department users open their own annual AIP automatically. **Add program heading** creates a reference and title, with no budget entry.
+3. Use the green **+ Add PPA** under a heading to enter an activity, schedule, outputs, funding and PS/MOOE/FE/CO amounts.
+4. Every PPA allocation, including drafts and returned PPAs, counts against the office budget. All programs share that budget. Editing excludes the PPA's previous amount.
+5. Program totals are calculated from their PPAs. Headings never consume a second allocation. Only Budget Office and Admin can change ceilings; a ceiling cannot be reduced below current allocations.
+6. The existing PPMP service links procurement to an approved actual PPA and checks its MOOE/CO amounts, including draft requirements. PPMP costs do not consume the office budget again. The PPMP entry screen and monthly procurement workflow remain future work.
 
-Open `/aips` after signing in. Administrators and assigned office users can create or open one annual document per office and fiscal year. Other recognized roles have read-only access; office users see only their own department.
+Existing office assignments and financial records are preserved. Migration 2026_11_03 converts old root AIP rows into program headings, leaving their fields and amounts intact for reference. The UI clearly labels these previous heading amounts as inactive; actual budgets are entered on the PPAs. The migration refuses conversion if a PPMP still references an old root, and does not offer automatic rollback. Back up the database before applying it.
 
-1. Department accounts land directly on their assigned office’s PPA workspace. Choose the fiscal year if needed; no department selection or annual-plan creation step is required.
-2. Choose **Add PPA**. Enter an AIP/PPA reference, title, fund source, dates and PS/MOOE/FE/CO allocations. Optional parent-program, sector, sub-sector and division fields match the source workbook context.
-3. Save the draft. The annual container is created automatically on the first successful save and reused for later PPAs. Administrators can open a department form directly from its Add PPA action. Merely browsing a year creates no records. Amounts are recalculated on the server in centavos and the change is audited. The annual document displays the combined allocation across its PPAs, including drafts; this is not an approved budget.
-4. Use **View** to read full details or **Edit** to update draft/returned entries. Office and year remain fixed. Outdated edits are rejected and submitted/approved entries remain locked.
-
-The additive `2026_10_30_000001_add_aip_documents.php` migration groups existing AIP rows by office/year. It preserves their IDs, amounts, statuses, versions and linked PPMP records. Existing `plans` rows of type `aip` now represent PPA entries under `aip_documents`; the old `annual_plans` table has a separate APP-related purpose and is not reused. Parent-program names are grouping labels in this first stage, not additional financial subtotal records.
-
-Update an existing checkout with `php artisan migrate` and `npm run build`, then start `composer run dev`. Never use `migrate:fresh` for this update. Each checkout has its own database; GitHub does not synchronize users, offices or planning records.
-
-The first implemented stage is annual-document/PPA preparation. Monthly procurement entry, catalogue screens, consolidated PPMP export, climate tagging and the new MPDC/Budget/Mayor review sequence are not yet implemented. Existing service-level budget/approval rules are legacy behavior, not the proposed new workflow; submission buttons stay unavailable until that service is updated.
+Run php artisan migrate, npm run types, php artisan test, and npm run build when updating. Never use migrate:fresh on an existing installation. Each checkout has its own database; pushing code does not synchronize office budgets or accounts.
 
 Implementation locations:
 - `app/Http/Controllers/AipDocumentController.php`: annual-document list and creation.
@@ -322,12 +318,3 @@ CREATE TABLE audit_events (
         REFERENCES offices(id)
         ON DELETE RESTRICT
 );
-## Main and sub-PPAs
-
-Use the green **+ Sub PPA** button beside a main reference. The form inherits department, year, funding and schedule, suggests a unique reference and shows the available PS/MOOE/FE/CO allocation. Save to display the sub-PPA directly below its parent, including when that parent is on a later page.
-
-Sub-PPAs break down the main allocation; annual totals count main PPAs once. Each expense class is checked against the combined sibling amounts. Editing a child excludes its previous allocation from that check. A main allocation cannot be reduced below its children. Parent assignment is fixed after creation; only one sub-PPA level is supported. Department boundaries and main-PPA locks apply to children. Separate sub-PPA submission is disabled.
-
-Run `php artisan migrate`, `npm run types`, `php artisan test`, and `npm run build` after updating. The hierarchy migration adds a nullable relationship and preserves existing records. Its rollback refuses to remove relationships while sub-PPAs exist. Do not use `migrate:fresh` on an existing installation.
-
-PHP/React source is the application. Temporary editing scripts and database backups are kept outside the repository and are not runtime dependencies. Monthly procurement screens and consolidated PPMP export remain a later stage.

@@ -3,36 +3,35 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\PlanningService;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\PpaTestCase;
 
-class SubPpaFlowTest extends PpaTestCase
+class ProgramPpaFlowTest extends PpaTestCase
 {
     public function test_form_inherits_context_and_child_is_nested_without_double_counting(): void
     {
         $this->get('/aips/'.$this->main->id.'/sub-ppas/create')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->component('ppas')->where('startCreating', true)->where('parentPpa.id', $this->main->id)
+            ->component('ppas')->where('editorVisible', true)->where('program.id', $this->main->id)
             ->where('initial.parent_ppa_id', (string) $this->main->id)->where('initial.reference', '2027-0-1-001')
-            ->where('initial.fund_source', 'GF')->where('parentPpa.available.mooe', 1000000));
+            ->where('initial.fund_source', '')->where('budget.remaining_cents', 1000000));
         $child = $this->child();
         $this->assertSame($this->main->id, $child->parent_ppa_id);
         $this->assertNull($child->parent_id);
         $this->assertSame($this->main->aip_document_id, $child->aip_document_id);
         $this->get('/aips?year=2027')->assertInertia(fn (Assert $p) => $p
             ->has('plans.data', 1)->where('plans.data.0.id', $this->main->id)
-            ->where('plans.data.0.children.0.id', $child->id)->where('totals.total', 1310000));
+            ->where('plans.data.0.children.0.id', $child->id)->where('budget.allocated_cents', 600000)->where('plans.data.0.total_cents', 600000));
         $this->get('/aips/'.$this->main->id.'/sub-ppas/create')->assertInertia(fn (Assert $p) => $p
-            ->where('initial.reference', '2027-0-1-002')->where('parentPpa.available.mooe', 400000));
+            ->where('initial.reference', '2027-0-1-002')->where('budget.remaining_cents', 400000));
         $this->actingAs(User::factory()->create(['role' => 'admin']))->get('/aips?year=2027')
-            ->assertInertia(fn (Assert $p) => $p->where('documents.data.0.ppas_count', 2)
-                ->where('documents.data.0.ppas_sum_total_cents', 1310000));
+            ->assertInertia(fn (Assert $p) => $p->where('documents.data.0.ppas_count', 1)
+                ->where('documents.data.0.ppas_sum_total_cents', 600000));
     }
 
     public function test_sub_ppa_stays_with_its_parent_on_later_pages_after_saving(): void
     {
         for ($i = 0; $i < 15; $i++) {
-            app(PlanningService::class)->save($this->planner, $this->data(['reference' => 'MAIN-'.$i]));
+            $this->post('/aips', $this->data(['reference' => 'MAIN-'.$i]))->assertSessionHasNoErrors();
         }
         $this->post('/aips', $this->childData())->assertSessionHasNoErrors()
             ->assertRedirect(route('aips.documents.show', ['document' => $this->main->aip_document_id, 'page' => 2]));

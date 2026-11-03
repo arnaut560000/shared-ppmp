@@ -33,10 +33,13 @@ export function AppSidebar() {
 
     const navigation: NavItem[] = [
         ...mainNavItems,
+        ...(auth.user.role === 'admin' || auth.user.role === 'budget'
+            ? [{ title: 'Office budget allocations', url: '/budgets', icon: ClipboardList }]
+            : []),
         ...(auth.user.role === 'admin'
             ? [
                   {
-                      title: 'Administation',
+                      title: 'Administration',
                       url: '/administration',
                       icon: Settings,
                   },

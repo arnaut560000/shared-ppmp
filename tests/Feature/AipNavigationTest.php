@@ -19,13 +19,13 @@ class AipNavigationTest extends TestCase
         $this->get('/register')->assertRedirect('/aips');
     }
 
-    public function test_dashboard_and_budget_endpoints_are_removed(): void
+    public function test_dashboard_remains_removed_and_budget_allocation_is_available_to_admin(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
         $this->get('/dashboard')->assertNotFound();
-        $this->get('/budgets')->assertNotFound();
-        $this->post('/budgets', [])->assertNotFound();
+        $this->get('/budgets')->assertOk();
+        $this->post('/budgets', [])->assertSessionHasErrors(['office_id', 'fiscal_year', 'amount']);
     }
 
     public function test_administration_still_allows_admin_to_create_an_office(): void

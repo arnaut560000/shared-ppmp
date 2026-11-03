@@ -21,124 +21,76 @@ class AipDocumentTest extends TestCase
         return User::factory()->create(['role' => 'office', 'office_id' => $office->id]);
     }
 
-    private function ppa(AipDocument $document, array $changes = []): array
+    public function test_department_opens_its_own_workspace_without_creating_records(): void
     {
-        return array_replace([
-            'aip_document_id' => $document->id,
-            'reference' => '1000-3-1-01-003-001',
-            'title' => 'Public Information and Media Services',
-            'program_name' => 'Public Information Program',
-            'sector' => 'Institutional Sector',
-            'sub_sector' => 'Executive Services',
-            'division' => 'ICT/PIO',
-            'fund_source' => 'GF',
-            'expected_output' => 'Regular publication of official content',
-            'start_date' => '2027-01-01',
-            'end_date' => '2027-12-31',
-            'ps' => '100.01', 'mooe' => '200.02', 'fe' => '0', 'co' => '300.03',
-        ], $changes);
+        $owner = $this->planner();
+        $other = $this->planner('ENG');
+        $this->actingAs($owner)->get('/aips?year=2027')->assertInertia(fn (Assert $p) => $p
+            ->component('ppas')->where('document.id', null)->where('initial.office_id', (string) $owner->office_id)
+            ->where('budget.ceiling_cents', null)->has('plans.data', 0));
+        $this->assertDatabaseCount('aip_documents', 0);
+        $this->get('/aips/offices/'.$other->office_id.'?year=2027')->assertForbidden();
+
+        $data = ['office_id' => $other->office_id, 'fiscal_year' => 2027, 'reference' => 'PROGRAM', 'title' => 'Information'];
+        $this->post('/aips', [...$data, 'title' => ''])->assertSessionHasErrors('title');
+        $this->assertDatabaseCount('aip_documents', 0);
+        $this->post('/aips', $data)->assertSessionHasNoErrors();
+        $this->assertSame($owner->office_id, AipDocument::sole()->office_id);
+        $this->assertSame('program', Plan::sole()->type);
+        $this->assertSame(0, Plan::sole()->total_cents);
+        $this->post('/aips', [...$data, 'reference' => 'SECOND'])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('aip_documents', 1);
+        $this->get('/aips?year=2028')->assertInertia(fn (Assert $p) => $p->has('plans.data', 0));
     }
 
-    public function test_office_can_open_one_annual_plan_and_add_multiple_ppas(): void
+    public function test_annual_document_scope_and_office_permissions_are_enforced(): void
     {
-        $user = $this->planner();
-        $this->actingAs($user)->post('/aips/documents', ['fiscal_year' => 2027])
-            ->assertSessionHasNoErrors()->assertRedirect();
+        $owner = $this->planner();
+        $other = $this->planner('ENG');
+        $this->actingAs($owner)->post('/aips/documents', ['fiscal_year' => 2027])->assertSessionHasNoErrors();
         $document = AipDocument::sole();
         $this->post('/aips/documents', ['fiscal_year' => 2027])->assertRedirect('/aips/documents/'.$document->id);
         $this->assertDatabaseCount('aip_documents', 1);
         $this->assertDatabaseCount('audit_events', 1);
-
-        foreach (['PPA-001', 'PPA-002'] as $reference) {
-            $this->post('/aips', $this->ppa($document, ['reference' => $reference]))
-                ->assertSessionHasNoErrors()->assertRedirect('/aips/documents/'.$document->id);
-        }
-        $this->get('/aips?year=2027')->assertInertia(fn (Assert $page) => $page
-            ->component('ppas')->has('plans.data', 2)->where('totals.total', 120012));
-        $this->get('/aips/documents/'.$document->id)->assertInertia(fn (Assert $page) => $page
-            ->component('ppas')->has('plans.data', 2)->where('totals.total', 120012)
-            ->where('initial.aip_document_id', (string) $document->id));
-        $this->assertDatabaseHas('plans', ['program_name' => 'Public Information Program', 'division' => 'ICT/PIO']);
-    }
-
-    public function test_documents_are_isolated_by_office_and_year_including_forged_parent_ids(): void
-    {
-        $owner = $this->planner();
-        $other = $this->planner('ENG');
-        $this->actingAs($owner)->post('/aips/documents', ['office_id' => $other->office_id, 'fiscal_year' => 2027])->assertRedirect();
-        $document = AipDocument::sole();
-        $this->assertSame($owner->office_id, $document->office_id);
-        $this->post('/aips', $this->ppa($document))->assertSessionHasNoErrors();
-        $plan = Plan::sole();
-        $this->post('/aips/documents', ['fiscal_year' => 2028])->assertRedirect();
-        $this->get('/aips?year=2028')->assertInertia(fn (Assert $page) => $page
-            ->component('ppas')->has('plans.data', 0)->where('year', 2028));
-        $this->actingAs($other)->get('/aips?year=2027')->assertInertia(fn (Assert $page) => $page->has('plans.data', 0));
-        $this->get('/aips/documents/'.$document->id)->assertForbidden();
-        $this->get('/aips/'.$plan->id.'/view')->assertForbidden();
-        $this->post('/aips', $this->ppa($document))->assertForbidden();
-        $this->assertDatabaseCount('plans', 1);
-    }
-
-    public function test_parent_scope_is_authoritative_and_readers_can_view_full_details(): void
-    {
-        $owner = $this->planner();
-        $this->actingAs($owner)->post('/aips/documents', ['fiscal_year' => 2027]);
-        $document = AipDocument::sole();
-        $this->post('/aips', $this->ppa($document, ['fiscal_year' => 2028, 'office_id' => 999]))->assertSessionHasNoErrors();
+        $data = ['aip_document_id' => $document->id, 'office_id' => 999, 'fiscal_year' => 2028,
+            'reference' => 'PROGRAM', 'title' => 'Information'];
+        $this->post('/aips', $data)->assertSessionHasNoErrors();
         $plan = Plan::sole();
         $this->assertSame(2027, $plan->fiscal_year);
         $this->assertSame($owner->office_id, $plan->office_id);
-        $reader = User::factory()->create(['role' => 'budget']);
-        $this->actingAs($reader)->get('/aips/'.$plan->id.'/view')->assertInertia(fn (Assert $page) => $page
-            ->component('ppas')->where('readOnly', true)->where('canWrite', false)
-            ->where('initial.expected_output', 'Regular publication of official content'));
-        $this->post('/aips/documents', ['office_id' => $owner->office_id, 'fiscal_year' => 2027])->assertForbidden();
-        $this->post('/aips', $this->ppa($document))->assertForbidden();
+        $this->actingAs($other)->get('/aips/documents/'.$document->id)->assertForbidden();
+        $this->get('/aips/'.$plan->id.'/view')->assertForbidden();
+        $this->post('/aips', $data)->assertForbidden();
+        $this->get('/aips?year=2027')->assertInertia(fn (Assert $p) => $p->has('plans.data', 0));
     }
 
-    public function test_admin_can_create_for_each_office_but_guests_and_unassigned_users_cannot(): void
+    public function test_guests_unassigned_users_and_reviewers_cannot_create_headings(): void
     {
         $office = $this->planner()->office_id;
-        $this->post('/aips/documents', ['office_id' => $office, 'fiscal_year' => 2027])->assertRedirect('/login');
-        $this->actingAs(User::factory()->create(['role' => 'office', 'office_id' => null]))
-            ->post('/aips/documents', ['office_id' => $office, 'fiscal_year' => 2027])->assertForbidden();
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
-            ->post('/aips/documents', ['office_id' => $office, 'fiscal_year' => 2027])->assertRedirect();
-        $this->post('/aips/documents', ['office_id' => $office, 'fiscal_year' => 2101])->assertSessionHasErrors('fiscal_year');
-        $this->post('/aips', ['aip_document_id' => 999])->assertSessionHasErrors('aip_document_id');
+        $data = ['office_id' => $office, 'fiscal_year' => 2027, 'reference' => 'PROGRAM', 'title' => 'Information'];
+        $this->post('/aips', $data)->assertRedirect('/login');
+        foreach ([
+            User::factory()->create(['role' => 'office', 'office_id' => null]),
+            User::factory()->create(['role' => 'budget']),
+        ] as $user) {
+            $this->actingAs($user)->post('/aips', $data)->assertForbidden();
+            $this->post('/aips/documents', $data)->assertForbidden();
+        }
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->post('/aips', $data)->assertSessionHasNoErrors();
+        $this->post('/aips', [...$data, 'aip_document_id' => 999])->assertSessionHasErrors('aip_document_id');
+        $this->post('/aips/documents', [...$data, 'fiscal_year' => 2101])->assertSessionHasErrors('fiscal_year');
     }
 
-    public function test_department_lands_directly_on_ppas_and_first_save_creates_the_container(): void
-    {
-        $user = $this->planner();
-        $other = $this->planner('ENG');
-        $this->actingAs($user)->get('/aips?year=2027')->assertInertia(fn (Assert $page) => $page
-            ->component('ppas')->where('departmentUser', true)->where('document.id', null)
-            ->where('initial.office_id', (string) $user->office_id)->has('plans.data', 0));
-        $this->assertDatabaseCount('aip_documents', 0);
-        $this->get('/aips/offices/'.$other->office_id.'?year=2027&create=1')->assertForbidden();
-        $payload = $this->ppa(new AipDocument, ['aip_document_id' => '', 'office_id' => $other->office_id, 'fiscal_year' => 2027]);
-        $this->post('/aips', array_replace($payload, ['title' => '']))->assertSessionHasErrors('title');
-        $this->assertDatabaseCount('aip_documents', 0);
-        $this->post('/aips', $payload)->assertSessionHasNoErrors()->assertRedirect();
-        $this->assertSame($user->office_id, AipDocument::sole()->office_id);
-        $this->assertSame($user->office_id, Plan::sole()->office_id);
-        $this->post('/aips', array_replace($payload, ['reference' => 'SECOND']))->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('aip_documents', 1);
-        $this->assertDatabaseCount('plans', 2);
-    }
-
-    public function test_admin_can_open_a_department_form_directly_without_creating_an_empty_plan(): void
+    public function test_admin_can_open_new_department_and_reviewers_are_read_only(): void
     {
         $office = $this->planner()->office_id;
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
-            ->get('/aips/offices/'.$office.'?year=2027&create=1')
-            ->assertInertia(fn (Assert $page) => $page->component('ppas')
-                ->where('startCreating', true)->where('initial.office_id', (string) $office));
+        $url = '/aips/offices/'.$office.'?year=2027&create=1';
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->get($url)
+            ->assertInertia(fn (Assert $p) => $p->component('ppas')->where('editorVisible', true)
+                ->where('isProgram', true)->where('initial.office_id', (string) $office));
         $this->assertDatabaseCount('aip_documents', 0);
-        $this->actingAs(User::factory()->create(['role' => 'budget']))
-            ->get('/aips/offices/'.$office.'?year=2027&create=1')->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'budget']))->get($url)
+            ->assertInertia(fn (Assert $p) => $p->where('canWrite', false)->where('editorVisible', false));
     }
 
     public function test_migration_groups_existing_rows_without_changing_amounts_statuses_or_links(): void

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AipDocument;
 use App\Models\AuditEvent;
 use App\Models\Budget;
 use App\Models\CatalogueItem;
@@ -30,6 +31,8 @@ class PlanningServiceTest extends TestCase
 
     private PlanningService $service;
 
+    private Plan $program;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -39,12 +42,15 @@ class PlanningServiceTest extends TestCase
         $this->mayor = User::factory()->create(['role' => 'mayor']);
         Budget::create(['office_id' => $this->office->id, 'fiscal_year' => 2027, 'ceiling_cents' => 100000]);
         $this->service = app(PlanningService::class);
+        $document = AipDocument::create(['office_id' => $this->office->id, 'fiscal_year' => 2027, 'title' => 'AIP 2027']);
+        $this->program = Plan::create(['type' => 'program', 'office_id' => $this->office->id, 'fiscal_year' => 2027, 'aip_document_id' => $document->id, 'reference' => 'PROGRAM', 'title' => 'Program', 'fund_source' => '', 'start_date' => '2027-01-01', 'end_date' => '2027-12-31', 'created_by' => $this->planner->id]);
     }
 
     private function aip(array $overrides = []): Plan
     {
         return $this->service->save($this->planner, array_replace([
             'type' => 'aip', 'office_id' => $this->office->id, 'fiscal_year' => 2027,
+            'parent_ppa_id' => $this->program->id,
             'reference' => 'AIP-001', 'title' => 'Office supplies', 'fund_source' => 'General Fund',
             'start_date' => '2027-01-01', 'end_date' => '2027-12-31',
             'ps' => '0', 'mooe' => '100', 'fe' => '0', 'co' => '200',
@@ -96,15 +102,13 @@ class PlanningServiceTest extends TestCase
     {
         $first = $this->aip();
         $this->service->transition($this->planner, $first, 'submit', 1, null);
-        $second = $this->aip(['reference' => 'AIP-002', 'mooe' => '800', 'co' => '0']);
         try {
-            $this->service->transition($this->planner, $second, 'submit', 1, null);
+            $this->aip(['reference' => 'AIP-002', 'mooe' => '800', 'co' => '0']);
             $this->fail('An oversubscribed AIP was accepted.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('budget ceiling', $exception->errors()['workflow'][0]);
+            $this->assertStringContainsString('office budget', $exception->errors()['workflow'][0]);
         }
-        $this->assertSame('draft', $second->fresh()->status);
-        $this->assertSame(1, $second->fresh()->version);
+        $this->assertSame(1, Plan::where('type', 'aip')->count());
     }
 
     public function test_another_office_cannot_edit_a_plan(): void
@@ -137,7 +141,7 @@ class PlanningServiceTest extends TestCase
         PlanningAccess::edit($this->planner, $aip);
     }
 
-    public function test_return_requires_a_reason_and_releases_the_reservation(): void
+    public function test_return_requires_a_reason_and_keeps_the_ppa_allocation(): void
     {
         $aip = $this->aip();
         $this->service->transition($this->planner, $aip, 'submit', 1, null);
@@ -149,7 +153,7 @@ class PlanningServiceTest extends TestCase
         }
         $this->assertSame('submitted', $aip->fresh()->status);
         $this->service->transition($this->budgetOfficer, $aip->fresh(), 'return', 2, 'Revise the estimate.');
-        $replacement = $this->aip(['reference' => 'AIP-002', 'mooe' => '1000', 'co' => '0']);
+        $replacement = $this->aip(['reference' => 'AIP-002', 'mooe' => '700', 'co' => '0']);
         $this->service->transition($this->planner, $replacement, 'submit', 1, null);
         $this->assertSame('submitted', $replacement->fresh()->status);
         $this->assertDatabaseHas('audit_events', ['subject_id' => $aip->id, 'action' => 'return', 'comment' => 'Revise the estimate.']);
@@ -160,5 +164,52 @@ class PlanningServiceTest extends TestCase
         $otherOffice = Office::create(['code' => 'OTHER', 'name' => 'Other office']);
         $this->expectException(HttpException::class);
         app(ConsolidatedPpmpReport::class)->build($this->planner, 2027, $otherOffice->id);
+    }
+
+    public function test_draft_procurement_uses_ppa_allocation_without_charging_office_twice(): void
+    {
+        $ppa = $this->approvedAip();
+        $item = CatalogueItem::create([
+            'code' => 'PAPER-BOUNDARY', 'name' => 'Paper', 'unit' => 'ream', 'category' => 'Supplies',
+            'expense_class' => 'MOOE', 'price_cents' => 2500,
+        ]);
+        $data = [
+            'type' => 'ppmp', 'office_id' => $this->office->id, 'fiscal_year' => 2027,
+            'parent_id' => $ppa->id, 'reference' => 'PPMP-BOUNDARY', 'title' => 'Procurement',
+            'fund_source' => 'GF', 'start_date' => '2027-01-01', 'end_date' => '2027-12-31',
+            'items' => [['catalogue_item_id' => $item->id, 'quarterly_quantities' => [4, 0, 0, 0]]],
+        ];
+        $ppmp = $this->service->save($this->planner, $data);
+        $this->assertSame(10000, $ppmp->total_cents);
+        $this->assertSame(30000, (int) $this->program->aipDocument->ppas()->sum('total_cents'));
+        try {
+            $this->service->save($this->planner, [...$data, 'reference' => 'OVER']);
+            $this->fail('Draft procurement exceeded the PPA allocation.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('MOOE', $e->errors()['workflow'][0]);
+        }
+        $this->assertSame(1, Plan::where('type', 'ppmp')->count());
+        $this->service->save($this->planner, [...$data, 'version' => 1], $ppmp);
+        $ppa->update(['status' => 'returned']);
+        try {
+            $this->service->save($this->planner, [
+                'version' => $ppa->version, 'mooe' => '99.99', 'co' => '200',
+                'type' => 'aip', 'office_id' => $ppa->office_id, 'fiscal_year' => 2027,
+            ], $ppa);
+            $this->fail('PPA was reduced below procurement requirements.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('existing PPMP', $e->errors()['workflow'][0]);
+        }
+        $this->assertSame(10000, $ppa->fresh()->mooe_cents);
+    }
+
+    public function test_heading_is_not_an_approved_procurement_parent(): void
+    {
+        $this->program->update(['status' => 'approved']);
+        $this->expectException(ValidationException::class);
+        $this->service->save($this->planner, [
+            'type' => 'ppmp', 'office_id' => $this->office->id, 'fiscal_year' => 2027,
+            'parent_id' => $this->program->id,
+        ]);
     }
 }

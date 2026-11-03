@@ -6,6 +6,7 @@ use App\Models\AipDocument;
 use App\Models\AuditEvent;
 use App\Models\Budget;
 use App\Models\CatalogueItem;
+use App\Models\Office;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,8 @@ class PlanningService
     ): Plan {
         return DB::transaction(function () use ($user, $data, $existing) {
             PlanningAccess::roles($user, ['admin', 'office']);
+            abort_unless(in_array($existing?->type ?? $data['type'], ['aip', 'ppmp'], true), 422);
+            Office::whereKey($existing?->office_id ?? $data['office_id'])->lockForUpdate()->firstOrFail();
             $parentPpa = PpaHierarchy::prepare($user, $data, $existing);
 
             if ($existing) {
@@ -168,6 +171,8 @@ class PlanningService
                     $parentPpa,
                     $existing
                 );
+            } elseif ($data['type'] === 'ppmp') {
+                PpaHierarchy::validateProcurement($amounts, (int) $data['parent_id'], $existing);
             }
 
             if (array_sum($amounts) <= 0) {
@@ -260,8 +265,8 @@ class PlanningService
             $version,
             $comment
         ) {
-            // Lock the envelope first so concurrent submissions
-            // cannot reserve the same balance.
+            // Use the same lock order as PPA saves and office budget changes.
+            Office::whereKey($plan->office_id)->lockForUpdate()->firstOrFail();
             $budget = Budget::where('office_id', $plan->office_id)
                 ->where('fiscal_year', $plan->fiscal_year)
                 ->lockForUpdate()
@@ -273,10 +278,11 @@ class PlanningService
 
             PlanningAccess::view($user, $plan);
 
-            if ($plan->parent_ppa_id !== null) {
-                self::fail(
-                    'Sub-PPAs are allocation breakdowns. Review the main PPA instead.'
-                );
+            if ($plan->type === 'program') {
+                self::fail('Program headings are not submitted for financial approval.');
+            }
+            if (! in_array($action, ['submit', 'approve', 'return'], true)) {
+                self::fail('Unknown workflow action.');
             }
 
             if ($plan->version !== $version) {
@@ -294,10 +300,9 @@ class PlanningService
                 }
 
                 if ($plan->type === 'aip') {
-                    $reserved = Plan::where('type', 'aip')->whereNull('parent_ppa_id')
+                    $reserved = Plan::where('type', 'aip')
                         ->where('office_id', $plan->office_id)
                         ->where('fiscal_year', $plan->fiscal_year)
-                        ->whereIn('status', ['submitted', 'approved'])
                         ->where('id', '!=', $plan->id)
                         ->sum('total_cents');
 
@@ -317,7 +322,7 @@ class PlanningService
 
                     foreach (['mooe_cents', 'co_cents'] as $field) {
                         $reserved = Plan::where('parent_id', $parent->id)
-                            ->whereIn('status', ['submitted', 'approved'])
+                            ->where('type', 'ppmp')
                             ->where('id', '!=', $plan->id)
                             ->sum($field);
 
