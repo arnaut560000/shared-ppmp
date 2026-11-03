@@ -77,17 +77,29 @@ The focused tests cover service permissions, office budget reservations, stale v
 
 Existing users, office assignments, AIPs, and budget records are preserved. The Budget model and historical migrations remain because the shared planning service still contains budget-dependent submission rules; this reset removes the budget-management interface, not stored records.
 
-## AIP draft workflow
+## Annual plan and PPA workflow
 
-Open `/aips` after signing in. Administrators and office users with an assigned office can create AIPs; other recognized roles can view the list. Office accounts see only their own office documents.
+Open `/aips` after signing in. Administrators and assigned office users can create or open one annual document per office and fiscal year. Other recognized roles have read-only access; office users see only their own department.
 
-1. Select the fiscal year and office, then enter a unique AIP reference, title, fund source, dates, and proposed PS/MOOE/FE/CO amounts in pesos.
-2. Save the draft. The server calculates the amount in centavos and records an audit event. Drafts do not reserve the office budget.
-3. Use Edit to update a draft or returned AIP. Office and fiscal year stay fixed. Outdated edits are rejected; submitted and approved plans are locked.
+1. Department accounts land directly on their assigned office’s PPA workspace. Choose the fiscal year if needed; no department selection or annual-plan creation step is required.
+2. Choose **Add PPA**. Enter an AIP/PPA reference, title, fund source, dates and PS/MOOE/FE/CO allocations. Optional parent-program, sector, sub-sector and division fields match the source workbook context.
+3. Save the draft. The annual container is created automatically on the first successful save and reused for later PPAs. Administrators can open a department form directly from its Add PPA action. Merely browsing a year creates no records. Amounts are recalculated on the server in centavos and the change is audited. The annual document displays the combined allocation across its PPAs, including drafts; this is not an approved budget.
+4. Use **View** to read full details or **Edit** to update draft/returned entries. Office and year remain fixed. Outdated edits are rejected and submitted/approved entries remain locked.
 
-After pulling this update into an already configured checkout, run `npm ci`, `npm run build`, and `php artisan migrate`. Start with `composer run dev` and open http://127.0.0.1:8001/aips. Each checkout has its own local database; GitHub does not synchronize users, offices, or budgets.
+The additive `2026_10_30_000001_add_aip_documents.php` migration groups existing AIP rows by office/year. It preserves their IDs, amounts, statuses, versions and linked PPMP records. Existing `plans` rows of type `aip` now represent PPA entries under `aip_documents`; the old `annual_plans` table has a separate APP-related purpose and is not reused. Parent-program names are grouping labels in this first stage, not additional financial subtotal records.
 
-Run `php artisan test --filter=AipTest` for HTTP checks covering creation, editing, office privacy, reviewer permissions, validation, and document locking. Submission and approval buttons are not part of this update.
+Update an existing checkout with `php artisan migrate` and `npm run build`, then start `composer run dev`. Never use `migrate:fresh` for this update. Each checkout has its own database; GitHub does not synchronize users, offices or planning records.
+
+The first implemented stage is annual-document/PPA preparation. Monthly procurement entry, catalogue screens, consolidated PPMP export, climate tagging and the new MPDC/Budget/Mayor review sequence are not yet implemented. Existing service-level budget/approval rules are legacy behavior, not the proposed new workflow; submission buttons stay unavailable until that service is updated.
+
+Implementation locations:
+- `app/Http/Controllers/AipDocumentController.php`: annual-document list and creation.
+- `app/Http/Controllers/AipController.php`: PPA list, details, validation and editing.
+- `resources/js/pages/aips.tsx`: annual-document screen.
+- `resources/js/pages/ppas.tsx`: PPA workspace and form.
+- `tests/Feature/AipDocumentTest.php`: grouping, migration preservation and office/year access checks.
+
+Run `php artisan test`, `npm run types` and `npm run build` to verify this stage. No dependencies were added.
 
 ## SQLite process
 
@@ -310,3 +322,12 @@ CREATE TABLE audit_events (
         REFERENCES offices(id)
         ON DELETE RESTRICT
 );
+## Main and sub-PPAs
+
+Use the green **+ Sub PPA** button beside a main reference. The form inherits department, year, funding and schedule, suggests a unique reference and shows the available PS/MOOE/FE/CO allocation. Save to display the sub-PPA directly below its parent, including when that parent is on a later page.
+
+Sub-PPAs break down the main allocation; annual totals count main PPAs once. Each expense class is checked against the combined sibling amounts. Editing a child excludes its previous allocation from that check. A main allocation cannot be reduced below its children. Parent assignment is fixed after creation; only one sub-PPA level is supported. Department boundaries and main-PPA locks apply to children. Separate sub-PPA submission is disabled.
+
+Run `php artisan migrate`, `npm run types`, `php artisan test`, and `npm run build` after updating. The hierarchy migration adds a nullable relationship and preserves existing records. Its rollback refuses to remove relationships while sub-PPAs exist. Do not use `migrate:fresh` on an existing installation.
+
+PHP/React source is the application. Temporary editing scripts and database backups are kept outside the repository and are not runtime dependencies. Monthly procurement screens and consolidated PPMP export remain a later stage.
