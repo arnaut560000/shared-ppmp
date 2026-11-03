@@ -25,6 +25,21 @@ class PlanningAccess
         self::roles($user, ['office', 'admin']);
         self::view($user, $plan);
 
+        if ($plan->parent_ppa_id !== null) {
+            $parent = $plan->parentPpa;
+
+            abort_unless(
+                $parent
+                    && $parent->type === 'aip'
+                    && $parent->parent_ppa_id === null
+                    && $parent->office_id === $plan->office_id
+                    && $parent->fiscal_year === $plan->fiscal_year
+                    && in_array($parent->status, ['draft', 'returned'], true),
+                409,
+                'The main PPA is locked or its relationship is invalid.'
+            );
+        }
+
         abort_unless(
             in_array($plan->status, ['draft', 'returned']),
             409,
