@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AipDocument;
 use App\Models\Office;
 use App\Models\Plan;
 use App\Models\User;
@@ -47,7 +48,7 @@ class AipTest extends TestCase
     {
         $this->actingAs($this->planner)->post('/aips', $this->payload())
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('aips.index', ['year' => 2027]));
+            ->assertRedirect(route('aips.documents.show', AipDocument::sole()->id));
 
         return Plan::sole();
     }
@@ -61,7 +62,7 @@ class AipTest extends TestCase
         $this->actingAs($unassigned)->get('/aips?year=2027')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('aips')
-                ->has('offices', 0)->has('plans.data', 0));
+                ->has('offices', 0)->has('documents.data', 0));
         $this->post('/aips', $this->payload())->assertForbidden();
     }
 
@@ -80,8 +81,8 @@ class AipTest extends TestCase
         $this->assertSame('aip', $plan->type);
         $this->assertSame(15000025, $plan->total_cents);
         $this->assertDatabaseHas('audit_events', ['subject_type' => 'plan', 'subject_id' => $plan->id, 'action' => 'created']);
-        $this->get('/aips?year=2027')->assertInertia(fn (Assert $page) => $page
-            ->component('aips')->has('plans.data', 1)->where('plans.data.0.status', 'draft'));
+        $this->get('/aips/documents/'.$plan->aip_document_id)->assertInertia(fn (Assert $page) => $page
+            ->component('ppas')->has('plans.data', 1)->where('plans.data.0.status', 'draft'));
     }
 
     public function test_edit_form_and_update_preserve_office_and_year_and_reject_stale_updates(): void
@@ -89,7 +90,7 @@ class AipTest extends TestCase
         $plan = $this->createDraft();
         $other = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
         $this->get("/aips/{$plan->id}/edit")->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('aips')->where('editingId', $plan->id)->where('initial.mooe', '100000.25'));
+            ->component('ppas')->where('editingId', $plan->id)->where('initial.mooe', '100000.25'));
 
         $this->put("/aips/{$plan->id}", $this->payload([
             'version' => 1, 'mooe' => '120000', 'office_id' => $other->id, 'fiscal_year' => 2028,
@@ -120,7 +121,7 @@ class AipTest extends TestCase
     {
         $plan = $this->createDraft();
         $reviewer = User::factory()->create(['role' => 'budget']);
-        $this->actingAs($reviewer)->get('/aips?year=2027')
+        $this->actingAs($reviewer)->get('/aips/documents/'.$plan->aip_document_id)
             ->assertInertia(fn (Assert $page) => $page->where('canWrite', false)
                 ->has('plans.data', 1)->where('plans.data.0.can_edit', false));
         $this->post('/aips', $this->payload())->assertForbidden();
