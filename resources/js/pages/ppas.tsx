@@ -255,7 +255,7 @@ export default function Ppas(props: Props) {
         >
             <Head title={`${document.office.code} — AIP ${year}`} />
 
-            <div className="space-y-6 p-6">
+            <div className="aip-workspace min-w-0 flex-1 space-y-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header>
                     <h1 className="text-2xl font-bold">{document.title}</h1>
                     <p className="mt-2">{document.office.name}</p>
