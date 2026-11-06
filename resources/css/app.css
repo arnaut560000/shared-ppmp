@@ -195,3 +195,13 @@
     --sidebar-border: #315777;
     --sidebar-ring: #93c5fd;
 }
+
+body:has(.aip-workspace) [data-sidebar="menu-button"],
+body:has(.aip-workspace) [data-sidebar="group-label"] {
+    color: #edf5ff;
+}
+
+body:has(.aip-workspace) [data-sidebar="menu-button"]:hover {
+    background-color: #20578a;
+    color: white;
+}
