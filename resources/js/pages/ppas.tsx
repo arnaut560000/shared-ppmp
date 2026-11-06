@@ -257,8 +257,10 @@ export default function Ppas(props: Props) {
 
             <div className="aip-workspace min-w-0 flex-1 space-y-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header>
-                    <h1 className="text-2xl font-bold">{document.title}</h1>
-                    <p className="mt-2">{document.office.name}</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">{document.title}</h1>
+                    <p className="mt-1 text-sm text-slate-600">
+                        {document.office.code} · {document.office.name}
+                    </p>
                 </header>
 
                 <form
