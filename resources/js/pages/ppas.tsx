@@ -53,7 +53,8 @@ type Props = {
     message: string | null;
 };
 
-const inputClass = 'mt-1 w-full rounded-lg border bg-background px-3 py-2 disabled:opacity-70';
+const inputClass =
+    'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 focus-visible:outline-blue-600 disabled:bg-slate-50';
 const buttonClass = 'rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white disabled:opacity-50';
 const money = (value: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value / 100);
 
@@ -113,7 +114,7 @@ function Editor({
           ];
 
     return (
-        <section className="rounded-xl border border-t-4 border-t-blue-600 p-5">
+        <section className="rounded-xl border border-t-4 border-slate-200 border-t-blue-600 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold">
                 {readOnly ? 'View' : editingId ? 'Edit' : 'Add'} {isProgram ? 'program heading' : 'PPA'}
             </h2>
