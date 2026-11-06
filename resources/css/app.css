@@ -232,3 +232,12 @@ body:has(.aip-workspace) [data-sidebar="header"] .text-red-600 {
 .aip-allocation-progress::-webkit-progress-bar { background: #e2e8f0; }
 .aip-allocation-progress::-webkit-progress-value { background: #1769aa; border-radius: 999px; }
 .aip-allocation-progress::-moz-progress-bar { background: #1769aa; border-radius: 999px; }
+
+.aip-workspace table thead {
+    background-color: #f1f5f9;
+    color: #183957;
+}
+
+.aip-workspace table tbody tr:hover {
+    background-color: #f7faff;
+}
