@@ -370,8 +370,8 @@ export default function Ppas(props: Props) {
                 {plans.data.length === 0 && <p>No program headings yet. Add a heading, then add its PPAs.</p>}
 
                 {plans.data.map((program) => (
-                    <section key={program.id} className="overflow-hidden rounded-xl border">
-                        <div className="space-y-3 bg-blue-50 p-5 text-blue-950">
+                    <section key={program.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        <div className="space-y-3 border-b border-slate-200 bg-blue-50 px-4 py-4 text-blue-950 md:px-5">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <p className="text-sm">{program.reference}</p>
