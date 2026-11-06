@@ -169,3 +169,20 @@
         @apply bg-background text-foreground;
     }
 }
+
+:root:has(.aip-workspace) {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #142c44;
+    --card: #ffffff;
+    --card-foreground: #142c44;
+    --popover: #ffffff;
+    --popover-foreground: #142c44;
+    --muted: #f1f5f9;
+    --muted-foreground: #475569;
+    --accent: #eff6ff;
+    --accent-foreground: #163b62;
+    --border: #dce5ed;
+    --input: #cbd5e1;
+    --ring: #2563eb;
+}
