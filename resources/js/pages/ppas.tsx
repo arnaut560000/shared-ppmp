@@ -256,34 +256,36 @@ export default function Ppas(props: Props) {
             <Head title={`${document.office.code} — AIP ${year}`} />
 
             <div className="aip-workspace min-w-0 flex-1 space-y-5 bg-slate-50 p-4 text-slate-900 md:p-6">
-                <header>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">{document.title}</h1>
-                    <p className="mt-1 text-sm text-slate-600">
-                        {document.office.code} · {document.office.name}
-                    </p>
-                </header>
+                <header className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{document.title}</h1>
+                        <p className="mt-1 text-sm text-slate-600">
+                            {document.office.code} · {document.office.name}
+                        </p>
+                    </div>
 
-                <form
-                    className="flex items-end gap-3"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        router.get(workspaceUrl, { year: filterYear });
-                    }}
-                >
-                    <label>
-                        Fiscal year
-                        <input
-                            className={inputClass}
-                            type="number"
-                            min="2020"
-                            max="2100"
-                            required
-                            value={filterYear}
-                            onChange={(event) => setFilterYear(event.target.value)}
-                        />
-                    </label>
-                    <button className={buttonClass}>Show</button>
-                </form>
+                    <form
+                        className="flex items-end gap-3"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            router.get(workspaceUrl, { year: filterYear });
+                        }}
+                    >
+                        <label>
+                            Planning year
+                            <input
+                                className="mt-1 block w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900"
+                                type="number"
+                                min="2020"
+                                max="2100"
+                                required
+                                value={filterYear}
+                                onChange={(event) => setFilterYear(event.target.value)}
+                            />
+                        </label>
+                        <button className={buttonClass}>Show</button>
+                    </form>
+                </header>
 
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
