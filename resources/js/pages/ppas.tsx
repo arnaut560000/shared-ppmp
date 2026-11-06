@@ -402,14 +402,15 @@ export default function Ppas(props: Props) {
                                 </div>
 
                                 {canWrite && (
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-3">
                                         <Link
                                             href={`/aips/${program.id}/ppas/create`}
-                                            className="rounded-lg bg-green-700 px-3 py-2 font-semibold text-white"
+                                            aria-label={`Add PPA under ${program.title}`}
+                                            className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white hover:bg-green-800"
                                         >
                                             + Add PPA
                                         </Link>
-                                        <Link href={`/aips/${program.id}/edit`} className="underline">
+                                        <Link href={`/aips/${program.id}/edit`} className="text-sm font-medium text-blue-700 underline">
                                             Edit heading
                                         </Link>
                                     </div>
