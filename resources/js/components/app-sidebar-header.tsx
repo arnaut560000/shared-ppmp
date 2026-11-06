@@ -1,10 +1,10 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { type BreadcrumbItem as BreadcrumbItemType } from '@/types';
+import { type BreadcrumbItem as BreadcrumbItemType, type SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 
 export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: BreadcrumbItemType[] }) {
-    const page = usePage();
+    const page = usePage<SharedData>();
 
     if (page.component === 'ppas') {
         return (
@@ -18,6 +18,9 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                         </p>
                     </div>
                 </div>
+                <span className="max-w-40 truncate text-sm font-semibold text-slate-700" title={page.props.auth.user.name}>
+                    {page.props.auth.user.name}
+                </span>
             </header>
         );
     }
