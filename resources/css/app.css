@@ -210,3 +210,11 @@ body:has(.aip-workspace) [data-sidebar="content"] a[href="/aips"] {
     background-color: #1769aa;
     color: white;
 }
+
+body:has(.aip-workspace) [data-sidebar="header"] .text-blue-700 {
+    color: white;
+}
+
+body:has(.aip-workspace) [data-sidebar="header"] .text-red-600 {
+    color: #ffd166;
+}
