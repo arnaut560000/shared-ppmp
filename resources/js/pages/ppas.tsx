@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ClipboardList, Coins, Wallet } from 'lucide-react';
+import { ChevronDown, ClipboardList, Coins, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type Ppa = {
@@ -245,6 +245,11 @@ function Editor({
 export default function Ppas(props: Props) {
     const { document, year, canWrite, listUrl, workspaceUrl, plans, budget, editorVisible, message } = props;
 
+    const [collapsedPrograms, setCollapsedPrograms] = useState<number[]>([]);
+    function toggleProgram(id: number) {
+        setCollapsedPrograms((current) => (current.includes(id) ? current.filter((programId) => programId !== id) : [...current, id]));
+    }
+
     const allocatedPercent = budget.ceiling_cents !== null && budget.ceiling_cents > 0 ? (budget.allocated_cents / budget.ceiling_cents) * 100 : null;
     const [filterYear, setFilterYear] = useState(String(year));
 
@@ -375,7 +380,21 @@ export default function Ppas(props: Props) {
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <p className="mb-1 text-xs font-semibold text-blue-700">{program.reference}</p>
-                                    <h2 className="text-lg font-semibold">{program.title}</h2>
+                                    <h2>
+                                        <button
+                                            type="button"
+                                            aria-expanded={!collapsedPrograms.includes(program.id)}
+                                            aria-controls={`program-ppas-${program.id}`}
+                                            onClick={() => toggleProgram(program.id)}
+                                            className="flex items-center gap-2 rounded text-left text-base font-bold text-slate-900 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
+                                        >
+                                            <ChevronDown
+                                                aria-hidden="true"
+                                                className={`size-4 shrink-0 motion-safe:transition-transform ${collapsedPrograms.includes(program.id) ? '-rotate-90' : ''}`}
+                                            />
+                                            {program.title}
+                                        </button>
+                                    </h2>
                                     <p className="mt-1 text-sm text-slate-600">
                                         {program.children.length} {program.children.length === 1 ? 'PPA' : 'PPAs'} · Program total{' '}
                                         <strong>{money(program.total_cents)}</strong>
@@ -405,44 +424,46 @@ export default function Ppas(props: Props) {
                             )}
                         </div>
 
-                        {program.children.length === 0 ? (
-                            <p className="p-5 text-sm">No PPAs under this heading yet.</p>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead>
-                                        <tr>
-                                            <th className="p-3">PPA</th>
-                                            <th className="p-3">Status</th>
-                                            <th className="p-3">Allocation</th>
-                                            <th className="p-3">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {program.children.map((ppa) => (
-                                            <tr key={ppa.id} className="border-t">
-                                                <td className="p-3 pl-8">
-                                                    <p className="font-semibold">{ppa.reference}</p>
-                                                    <p>{ppa.title}</p>
-                                                </td>
-                                                <td className="p-3 capitalize">{ppa.status}</td>
-                                                <td className="p-3">{money(ppa.total_cents)}</td>
-                                                <td className="space-x-4 p-3">
-                                                    <Link href={`/aips/${ppa.id}/view`} className="text-blue-700 underline">
-                                                        View
-                                                    </Link>
-                                                    {ppa.can_edit && (
-                                                        <Link href={`/aips/${ppa.id}/edit`} className="text-blue-700 underline">
-                                                            Edit
-                                                        </Link>
-                                                    )}
-                                                </td>
+                        <div id={`program-ppas-${program.id}`} hidden={collapsedPrograms.includes(program.id)}>
+                            {program.children.length === 0 ? (
+                                <p className="p-5 text-sm">No PPAs under this heading yet.</p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead>
+                                            <tr>
+                                                <th className="p-3">PPA</th>
+                                                <th className="p-3">Status</th>
+                                                <th className="p-3">Allocation</th>
+                                                <th className="p-3">Actions</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                        </thead>
+                                        <tbody>
+                                            {program.children.map((ppa) => (
+                                                <tr key={ppa.id} className="border-t">
+                                                    <td className="p-3 pl-8">
+                                                        <p className="font-semibold">{ppa.reference}</p>
+                                                        <p>{ppa.title}</p>
+                                                    </td>
+                                                    <td className="p-3 capitalize">{ppa.status}</td>
+                                                    <td className="p-3">{money(ppa.total_cents)}</td>
+                                                    <td className="space-x-4 p-3">
+                                                        <Link href={`/aips/${ppa.id}/view`} className="text-blue-700 underline">
+                                                            View
+                                                        </Link>
+                                                        {ppa.can_edit && (
+                                                            <Link href={`/aips/${ppa.id}/edit`} className="text-blue-700 underline">
+                                                                Edit
+                                                            </Link>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
                     </section>
                 ))}
 
