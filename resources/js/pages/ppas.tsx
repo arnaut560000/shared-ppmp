@@ -245,6 +245,7 @@ function Editor({
 export default function Ppas(props: Props) {
     const { document, year, canWrite, listUrl, workspaceUrl, plans, budget, editorVisible, message } = props;
 
+    const allocatedPercent = budget.ceiling_cents !== null && budget.ceiling_cents > 0 ? (budget.allocated_cents / budget.ceiling_cents) * 100 : null;
     const [filterYear, setFilterYear] = useState(String(year));
 
     return (
@@ -315,7 +316,26 @@ export default function Ppas(props: Props) {
                     ))}
                 </section>
 
-                <p className="text-sm">Allocations include draft PPAs. Program totals summarize their PPAs and are not deducted again.</p>
+                <section aria-label="Office budget allocation" className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    {allocatedPercent !== null && (
+                        <>
+                            <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                                <span className="font-medium text-slate-700">Office budget allocated</span>
+                                <strong className={allocatedPercent > 100 ? 'text-red-700' : 'text-blue-800'}>
+                                    {allocatedPercent.toLocaleString('en-PH', { maximumFractionDigits: 1 })}%
+                                </strong>
+                            </div>
+                            <progress
+                                aria-label="Percentage of office budget allocated to PPAs"
+                                aria-valuetext={allocatedPercent.toLocaleString('en-PH', { maximumFractionDigits: 1 }) + '% allocated'}
+                                className="aip-allocation-progress"
+                                max={100}
+                                value={Math.min(100, Math.max(0, allocatedPercent))}
+                            />
+                        </>
+                    )}
+                    <p className="mt-1 text-xs text-slate-600">Allocations include draft PPAs.</p>
+                </section>
 
                 {budget.ceiling_cents === null && (
                     <p className="rounded-lg bg-yellow-50 p-4 text-yellow-950">
