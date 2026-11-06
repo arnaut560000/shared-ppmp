@@ -186,3 +186,12 @@
     --input: #cbd5e1;
     --ring: #2563eb;
 }
+
+:root:has(.aip-workspace) {
+    --sidebar-background: #12365a;
+    --sidebar-foreground: #f3f7fc;
+    --sidebar-accent: #20578a;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #315777;
+    --sidebar-ring: #93c5fd;
+}
