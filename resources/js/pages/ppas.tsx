@@ -373,7 +373,11 @@ export default function Ppas(props: Props) {
                     />
                 )}
 
-                {plans.data.length === 0 && <p>No program headings yet. Add a heading, then add its PPAs.</p>}
+                {plans.data.length === 0 && (
+                    <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+                        {canWrite ? 'No program headings yet. Add a heading, then add its PPAs.' : 'No program headings for this office and year.'}
+                    </p>
+                )}
 
                 {plans.data.map((program) => (
                     <section key={program.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
