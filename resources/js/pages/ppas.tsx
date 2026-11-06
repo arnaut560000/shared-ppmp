@@ -338,7 +338,7 @@ export default function Ppas(props: Props) {
                 </section>
 
                 {budget.ceiling_cents === null && (
-                    <p className="rounded-lg bg-yellow-50 p-4 text-yellow-950">
+                    <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
                         You can organize program headings now. The Budget Office must assign a budget before you save PPAs.
                     </p>
                 )}
