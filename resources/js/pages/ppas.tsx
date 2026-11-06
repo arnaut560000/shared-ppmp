@@ -287,23 +287,24 @@ export default function Ppas(props: Props) {
                     </form>
                 </header>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                    {[
-                        ['Office budget', budget.ceiling_cents],
-                        ['Allocated to PPAs', budget.allocated_cents],
-                        ['Remaining office budget', budget.remaining_cents],
-                    ].map(([label, value], index) => (
-                        <div
-                            key={String(label)}
-                            className={`rounded-xl border border-t-4 p-4 ${
-                                index === 0 ? 'border-t-blue-600' : index === 1 ? 'border-t-red-500' : 'border-t-yellow-400'
-                            }`}
-                        >
-                            <p className="text-sm">{label}</p>
-                            <p className="mt-2 text-xl font-semibold">{value === null ? 'Not assigned' : money(Number(value))}</p>
+                <section aria-label="Office budget summary" className="grid gap-3 md:grid-cols-3">
+                    {(
+                        [
+                            { label: 'Office budget', value: budget.ceiling_cents },
+                            { label: 'Allocated to PPAs', value: budget.allocated_cents },
+                            { label: 'Remaining office budget', value: budget.remaining_cents },
+                        ] as const
+                    ).map(({ label, value }) => (
+                        <div key={label} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="min-w-0">
+                                <p className="text-sm text-slate-600">{label}</p>
+                                <p className="mt-1 text-lg font-bold break-words text-slate-900 tabular-nums xl:text-xl">
+                                    {value === null ? 'Not assigned' : money(value)}
+                                </p>
+                            </div>
                         </div>
                     ))}
-                </div>
+                </section>
 
                 <p className="text-sm">Allocations include draft PPAs. Program totals summarize their PPAs and are not deducted again.</p>
 
