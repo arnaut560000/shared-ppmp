@@ -1,5 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { ClipboardList, Coins, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type Ppa = {
@@ -290,12 +291,20 @@ export default function Ppas(props: Props) {
                 <section aria-label="Office budget summary" className="grid gap-3 md:grid-cols-3">
                     {(
                         [
-                            { label: 'Office budget', value: budget.ceiling_cents },
-                            { label: 'Allocated to PPAs', value: budget.allocated_cents },
-                            { label: 'Remaining office budget', value: budget.remaining_cents },
+                            { label: 'Office budget', value: budget.ceiling_cents, Icon: Wallet, iconStyle: 'bg-blue-700 text-white' },
+                            { label: 'Allocated to PPAs', value: budget.allocated_cents, Icon: ClipboardList, iconStyle: 'bg-green-700 text-white' },
+                            {
+                                label: 'Remaining office budget',
+                                value: budget.remaining_cents,
+                                Icon: Coins,
+                                iconStyle: 'bg-amber-400 text-amber-950',
+                            },
                         ] as const
-                    ).map(({ label, value }) => (
+                    ).map(({ label, value, Icon, iconStyle }) => (
                         <div key={label} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className={`grid size-10 shrink-0 place-items-center rounded-lg ${iconStyle}`}>
+                                <Icon aria-hidden="true" className="size-5" />
+                            </div>
                             <div className="min-w-0">
                                 <p className="text-sm text-slate-600">{label}</p>
                                 <p className="mt-1 text-lg font-bold break-words text-slate-900 tabular-nums xl:text-xl">
