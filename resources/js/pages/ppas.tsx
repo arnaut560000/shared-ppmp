@@ -418,9 +418,8 @@ export default function Ppas(props: Props) {
                             </div>
 
                             {program.legacy_total_cents > 0 && (
-                                <p className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-950">
-                                    Previous amount entered on this heading: {money(program.legacy_total_cents)}. It is retained for reference and is
-                                    not an active allocation. Record the actual allocations in the PPAs below.
+                                <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                                    Previous heading amount: {money(program.legacy_total_cents)}. Active allocations are recorded on the PPAs below.
                                 </p>
                             )}
                         </div>
