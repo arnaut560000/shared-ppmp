@@ -205,3 +205,8 @@ body:has(.aip-workspace) [data-sidebar="menu-button"]:hover {
     background-color: #20578a;
     color: white;
 }
+
+body:has(.aip-workspace) [data-sidebar="content"] a[href="/aips"] {
+    background-color: #1769aa;
+    color: white;
+}
