@@ -3,7 +3,9 @@
 use App\Http\Controllers\AdministrationController;
 use App\Http\Controllers\AipController;
 use App\Http\Controllers\AipDocumentController;
+use App\Http\Controllers\AipSummaryController;
 use App\Http\Controllers\OfficeBudgetController;
+use App\Http\Controllers\PpmpController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -12,6 +14,11 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
+    Route::put('aips/documents/{document}', [AipDocumentController::class, 'update'])->name('aips.documents.update');
+    Route::get('aips/documents/{document}/summary', AipSummaryController::class)->name('aips.documents.summary');
+    Route::get('aips/{ppa}/ppmp', [PpmpController::class, 'show'])->name('ppmp.show');
+    Route::post('aips/{ppa}/ppmp', [PpmpController::class, 'store'])->name('ppmp.store');
+    Route::put('aips/{ppa}/ppmp/{ppmp}', [PpmpController::class, 'update'])->name('ppmp.update');
     Route::get('budgets', [OfficeBudgetController::class, 'index'])->name('budgets.index');
     Route::post('budgets', [OfficeBudgetController::class, 'store'])->name('budgets.store');
     Route::get('aips/{plan}/ppas/create', [AipController::class, 'createPpa'])->name('aips.ppas.create');
