@@ -6,7 +6,7 @@ import { usePage } from '@inertiajs/react';
 export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: BreadcrumbItemType[] }) {
     const page = usePage<SharedData>();
 
-    if (page.component === 'ppas') {
+    if (['aips', 'ppas', 'ppmp', 'aip-summary'].includes(page.component)) {
         return (
             <header className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2 text-slate-900 md:px-6">
                 <div className="flex min-w-0 items-center gap-3">
