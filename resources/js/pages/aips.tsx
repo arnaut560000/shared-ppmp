@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
+import { planningLink, planningSection } from '@/lib/planning-navigation';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 type Office = { id: number; code: string; name: string };
@@ -33,25 +34,28 @@ const buttonClass = 'rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text
 const money = (cents: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(cents / 100);
 
 export default function Aips({ year, canWrite, offices, documents, message }: Props) {
+    const section = planningSection(usePage().url);
+    const choosingPpas = section === 'ppas';
     const [filterYear, setFilterYear] = useState(String(year));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Annual Investment Plans" />
-            <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+            <div className="aip-workspace flex min-w-0 flex-1 flex-col gap-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <p className="text-sm font-semibold text-blue-700">DIGITALavera ePPRISM</p>
-                        <h1 className="mt-1 text-2xl font-bold">Annual Investment Plans</h1>
+                        <h1 className="mt-1 text-2xl font-bold">{choosingPpas ? 'PPA List' : 'Annual Investment Plans'}</h1>
                         <p className="text-muted-foreground mt-2 text-sm">
-                            View department allocations and open their programs, projects and activities.
+                            {choosingPpas
+                                ? 'Choose a department to view its PPA list.'
+                                : 'View department allocations and open their programs, projects and activities.'}
                         </p>
                     </div>
                     <form
                         className="flex items-end gap-2"
                         onSubmit={(e) => {
                             e.preventDefault();
-                            router.get('/aips', { year: filterYear });
+                            router.get('/aips', { year: filterYear, ...(section ? { section } : {}) });
                         }}
                     >
                         <div>
@@ -75,7 +79,7 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                     </form>
                 </header>
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-                    Department accounts open their own PPA workspace automatically. Annual plans are created when the first program heading is saved.
+                    Each annual plan groups one office’s programs and procurement requirements for the selected year.
                 </div>
                 {message && (
                     <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
@@ -100,8 +104,9 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                                     <span>
                                         {office.code} — {office.name}
                                     </span>
-                                    <Link className={buttonClass} href={`/aips/offices/${office.id}?year=${year}&create=1`}>
-                                        Add program heading<span className="sr-only"> for {office.name}</span>
+                                    <Link className={buttonClass} href={planningLink(`/aips/offices/${office.id}`, section ?? 'info', year)}>
+                                        {choosingPpas ? 'Open PPA list' : 'Open AIP'}
+                                        <span className="sr-only"> for {office.name}</span>
                                     </Link>
                                 </li>
                             ))}
@@ -148,8 +153,12 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                                                 {money(Number(document.ppas_sum_total_cents ?? 0))}
                                             </td>
                                             <td className="px-5 py-4">
-                                                <Link href={`/aips/documents/${document.id}`} className="font-semibold text-blue-700 underline">
-                                                    Open PPAs<span className="sr-only"> for {document.office.name}</span>
+                                                <Link
+                                                    href={planningLink(`/aips/documents/${document.id}`, choosingPpas ? 'ppas' : 'info', year)}
+                                                    className="font-semibold text-blue-700 underline"
+                                                >
+                                                    {choosingPpas ? 'Open PPA list' : 'Open AIP'}
+                                                    <span className="sr-only"> for {document.office.name}</span>
                                                 </Link>
                                             </td>
                                         </tr>
@@ -164,12 +173,18 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                         </span>
                         <div className="flex gap-4">
                             {documents.prev_page_url && (
-                                <Link href={documents.prev_page_url} className="text-blue-700 underline">
+                                <Link
+                                    href={section ? planningLink(documents.prev_page_url, section) : documents.prev_page_url}
+                                    className="text-blue-700 underline"
+                                >
                                     Previous
                                 </Link>
                             )}
                             {documents.next_page_url && (
-                                <Link href={documents.next_page_url} className="text-blue-700 underline">
+                                <Link
+                                    href={section ? planningLink(documents.next_page_url, section) : documents.next_page_url}
+                                    className="text-blue-700 underline"
+                                >
                                     Next
                                 </Link>
                             )}
