@@ -1,3 +1,4 @@
+import AipManagementNav from '@/components/aip-management-nav';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -6,14 +7,6 @@ import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, ClipboardList, Folder, Settings } from 'lucide-react';
 import AppLogo from './app-logo';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Annual investment plans',
-        url: '/aips',
-        icon: ClipboardList,
-    },
-];
 
 const footerNavItems: NavItem[] = [
     {
@@ -32,7 +25,6 @@ export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
 
     const navigation: NavItem[] = [
-        ...mainNavItems,
         ...(auth.user.role === 'admin' || auth.user.role === 'budget'
             ? [{ title: 'Office budget allocations', url: '/budgets', icon: ClipboardList }]
             : []),
@@ -62,7 +54,9 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={navigation} />
+                <NavMain items={navigation}>
+                    <AipManagementNav />
+                </NavMain>
             </SidebarContent>
 
             <SidebarFooter>
