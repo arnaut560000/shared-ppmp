@@ -23,6 +23,17 @@ class Plan extends Model
         return $this->belongsTo(Plan::class, 'parent_ppa_id');
     }
 
+    public function procurementLists()
+    {
+        return $this->hasMany(self::class, 'parent_id')->where('type', 'ppmp');
+    }
+
+    public function permitsProcurementDrafts(): bool
+    {
+        return $this->type === 'aip' && $this->parent_ppa_id !== null
+            && in_array($this->status, ['draft', 'returned', 'approved'], true);
+    }
+
     public function subPpas()
     {
         return $this->hasMany(Plan::class, 'parent_ppa_id')

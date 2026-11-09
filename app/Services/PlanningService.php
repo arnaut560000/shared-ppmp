@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\AipDocument;
 use App\Models\AuditEvent;
 use App\Models\Budget;
-use App\Models\CatalogueItem;
 use App\Models\Office;
 use App\Models\Plan;
 use App\Models\User;
@@ -93,67 +92,22 @@ class PlanningService
             $lines = [];
 
             if ($data['type'] === 'ppmp') {
-                $parent = Plan::find($data['parent_id'] ?? null);
-
-                if (
-                    ! $parent
-                    || $parent->type !== 'aip'
-                    || $parent->status !== 'approved'
+                $data['parent_id'] = $existing?->parent_id ?? ($data['parent_id'] ?? null);
+                $parent = Plan::whereKey($data['parent_id'])->lockForUpdate()->first();
+                if (! $parent || ! $parent->permitsProcurementDrafts()
                     || $parent->office_id !== (int) $data['office_id']
-                    || $parent->fiscal_year !== (int) $data['fiscal_year']
-                ) {
-                    self::fail(
-                        'Select an approved AIP from the same office and fiscal year.'
-                    );
+                    || $parent->fiscal_year !== (int) $data['fiscal_year']) {
+                    self::fail('Choose a draft, returned or approved PPA for this office and year.');
                 }
-
-                foreach ($data['items'] ?? [] as $line) {
-                    $item = CatalogueItem::where('active', true)
-                        ->find($line['catalogue_item_id']);
-
-                    if (! $item) {
-                        self::fail(
-                            'One of the selected catalogue items is no longer active.'
-                        );
-                    }
-
-                    $quarters = array_map(
-                        'intval',
-                        $line['quarterly_quantities']
-                    );
-
-                    $quantity = array_sum($quarters);
-
-                    if ($quantity < 1) {
-                        self::fail(
-                            'Each item needs a quantity in at least one quarter.'
-                        );
-                    }
-
-                    $cost = $item->price_cents * $quantity;
-
-                    $amounts[strtolower($item->expense_class).'_cents'] += $cost;
-
-                    $lines[] = [
-                        'catalogue_item_id' => $item->id,
-                        ...$item->only([
-                            'code',
-                            'name',
-                            'specification',
-                            'unit',
-                            'expense_class',
-                            'price_cents',
-                        ]),
-                        'monthly_quantities' => null,
-                        'quarterly_quantities' => $quarters,
-                        'object_of_expenditure' => $item->category,
-                        'quantity' => $quantity,
-                        'total_cents' => $cost,
-                    ];
+                $duplicate = Plan::where('type', 'ppmp')->where('office_id', $parent->office_id)
+                    ->where('fiscal_year', $parent->fiscal_year)->where('reference', $data['reference'])
+                    ->when($existing, fn ($q) => $q->whereKeyNot($existing->id))->exists();
+                if ($duplicate) {
+                    throw ValidationException::withMessages(['reference' => 'This PPMP reference is already in use.']);
                 }
-
-                if (! $lines) {
-                    self::fail('Add at least one catalogue item.');
+                $lines = ProcurementSchedule::lines($data['items'] ?? [], $existing);
+                foreach ($lines as $line) {
+                    $amounts[strtolower($line['expense_class']).'_cents'] += $line['total_cents'];
                 }
             } else {
                 foreach (array_keys($amounts) as $key) {
@@ -190,6 +144,8 @@ class PlanningService
                     'description',
                     'fund_source',
                     'expected_output',
+                    'performance_indicator',
+                    'physical_target',
                     'start_date',
                     'end_date',
                     'parent_id',
