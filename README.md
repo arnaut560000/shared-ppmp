@@ -58,7 +58,7 @@ Laravel 12 was selected for compatibility with the installed PHP 8.2 runtime. La
 
 ## Planning backend foundation
 
-The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. The Dashboard remains removed; office budget allocation is available to Budget Office and Admin. Login and account-verification flows lead to /aips. AIP submission/review, catalogue management, PPMP screens, APP consolidation, and procurement/inventory screens remain future work.
+The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. The Dashboard remains removed; office budget allocation is available to Budget Office and Admin. Login and account-verification flows lead to /aips. AIP submission/review, catalogue management, APP consolidation, and procurement/inventory screens remain future work.
 
 PHP requires the BCMath and PDO SQLite extensions. After pulling this change into an existing local setup:
 
@@ -82,7 +82,19 @@ The focused tests cover service permissions, office budget reservations, stale v
 3. Use the green **+ Add PPA** under a heading to enter an activity, schedule, outputs, funding and PS/MOOE/FE/CO amounts.
 4. Every PPA allocation, including drafts and returned PPAs, counts against the office budget. All programs share that budget. Editing excludes the PPA's previous amount.
 5. Program totals are calculated from their PPAs. Headings never consume a second allocation. Only Budget Office and Admin can change ceilings; a ceiling cannot be reduced below current allocations.
-6. The existing PPMP service links procurement to an approved actual PPA and checks its MOOE/CO amounts, including draft requirements. PPMP costs do not consume the office budget again. The PPMP entry screen and monthly procurement workflow remain future work.
+6. Select **Open PPMP** beside an individual PPA. Enter January–December quantities for each active MOOE or CO catalogue item. Quarterly and annual totals are calculated from the monthly quantities. The amount available for this list excludes other PPMP lists on the same PPA; procurement costs never deduct from the office budget twice.
+7. Departments and administrators can prepare lists while the PPA is draft, returned or approved. Submission still requires an approved PPA. Existing quarterly-only lists are readable without inventing a monthly distribution. Saved item prices and specifications are retained during edits.
+
+For a local demonstration with an empty catalogue, optionally run `php artisan tinker` and add this sample item:
+
+```php
+\App\Models\CatalogueItem::firstOrCreate(['code' => 'DEMO-PAPER-A4'], [
+    'name' => 'A4 bond paper', 'specification' => '500 sheets per ream', 'unit' => 'ream',
+    'category' => 'Office supplies', 'expense_class' => 'MOOE', 'price_cents' => 25000, 'active' => true,
+]);
+```
+
+With a funded PPA, two reams in January and three in February should show five reams and PHP 1,250 in Q1.
 
 Existing office assignments and financial records are preserved. Migration 2026_11_03 converts old root AIP rows into program headings, leaving their fields and amounts intact for reference. The UI clearly labels these previous heading amounts as inactive; actual budgets are entered on the PPAs. The migration refuses conversion if a PPMP still references an old root, and does not offer automatic rollback. Back up the database before applying it.
 
@@ -318,3 +330,7 @@ CREATE TABLE audit_events (
         REFERENCES offices(id)
         ON DELETE RESTRICT
 );
+
+### Annual plan entry and review
+
+Use **AIP details** to create or reopen the office's plan for the selected year and save its title and description. Under **PPAs and PPMP**, enter the expected output, performance indicator and physical target for each activity. **Review AIP** lists activities across all program pages with their allocated amounts, saved procurement costs and item-line counts. The office balance subtracts PPA allocations once. Review is read-only and does not change approval status.
