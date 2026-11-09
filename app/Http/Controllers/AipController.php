@@ -209,6 +209,8 @@ class AipController extends Controller
                 'parent_ppa_id' => ['required', 'integer', 'exists:plans,id'],
                 'fund_source' => ['required', 'string', 'max:255'],
                 'description' => ['nullable', 'string', 'max:5000'],
+                'performance_indicator' => ['nullable', 'string', 'max:5000'],
+                'physical_target' => ['nullable', 'string', 'max:5000'],
                 'expected_output' => ['nullable', 'string', 'max:5000'],
                 'sector' => ['nullable', 'string', 'max:255'],
                 'sub_sector' => ['nullable', 'string', 'max:255'],
@@ -318,6 +320,8 @@ class AipController extends Controller
             'title' => $editing?->title ?? '',
             'fund_source' => $editing?->fund_source ?? '',
             'description' => $editing?->description ?? '',
+            'performance_indicator' => $editing?->performance_indicator ?? '',
+            'physical_target' => $editing?->physical_target ?? '',
             'expected_output' => $editing?->expected_output ?? '',
             'sector' => $editing?->sector ?? '',
             'sub_sector' => $editing?->sub_sector ?? '',
@@ -355,6 +359,12 @@ class AipController extends Controller
             ],
             'isProgram' => $isProgram,
             'program' => $program?->only(['id', 'reference', 'title']),
+            'procurementLists' => $editing?->type === 'aip'
+                ? $editing->procurementLists()
+                    ->where('office_id', $document->office_id)->where('fiscal_year', $year)
+                    ->with('items:id,plan_id,code,name,unit,quantity,price_cents,total_cents')
+                    ->orderBy('id')->get(['id', 'reference', 'status', 'total_cents'])
+                : [],
             'editingId' => $editing?->id,
             'readOnly' => $readOnly,
             'editorVisible' => $editing !== null
