@@ -39,6 +39,31 @@ class AipDocumentController extends Controller
         ]);
     }
 
+    public function update(Request $request, AipDocument $document): RedirectResponse
+    {
+        $user = $request->user();
+        PlanningAccess::roles($user, ['admin', 'office']);
+        abort_if($user->role === 'office' && $user->office_id !== $document->office_id, 403);
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'revision' => ['required', 'integer', 'min:1'],
+        ]);
+        DB::transaction(function () use ($data, $document, $user) {
+            $document = AipDocument::whereKey($document->id)->lockForUpdate()->firstOrFail();
+            if ((int) $document->revision !== (int) $data['revision']) {
+                PlanningService::fail('The AIP details changed. Reload before saving.');
+            }
+            $document->update([
+                'title' => $data['title'], 'description' => $data['description'] ?? null,
+                'revision' => $document->revision + 1,
+            ]);
+            PlanningService::audit($user, 'aip_document', $document->id, 'updated', $document->office_id);
+        });
+
+        return to_route('aips.documents.show', $document)->with('success', 'AIP details saved.');
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
@@ -52,9 +77,11 @@ class AipDocumentController extends Controller
             'fiscal_year' => ['required', 'integer', 'between:2020,2100'],
         ]);
 
-        $document = DB::transaction(function () use ($data, $user) {
+        $details = $request->validate(['title' => ['sometimes', 'required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000']]);
+        $document = DB::transaction(function () use ($data, $details, $user) {
             $document = AipDocument::firstOrCreate($data, [
-                'title' => 'Annual Investment Plan '.$data['fiscal_year'],
+                'title' => $details['title'] ?? 'Annual Investment Plan '.$data['fiscal_year'],
+                'description' => $details['description'] ?? null,
             ]);
             if ($document->wasRecentlyCreated) {
                 PlanningService::audit($user, 'aip_document', $document->id, 'created', $document->office_id);
