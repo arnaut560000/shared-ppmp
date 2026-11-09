@@ -1,5 +1,7 @@
+import PlanningStages from '@/components/planning-stages';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { planningLink, planningSection } from '@/lib/planning-navigation';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { ChevronDown, ClipboardList, Coins, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -24,6 +26,8 @@ type Program = {
 type Props = {
     document: {
         id: number | null;
+        revision?: number;
+        description?: string | null;
         title: string;
         office: { id: number; code: string; name: string };
     };
@@ -49,6 +53,7 @@ type Props = {
     editingId: number | null;
     readOnly: boolean;
     editorVisible: boolean;
+    procurementLists: ProcurementList[];
     initial: Record<string, string>;
     message: string | null;
 };
@@ -65,19 +70,18 @@ const amountFields = [
     ['co', 'Capital Outlay (CO)'],
 ] as const;
 
-function Editor({
-    initial,
-    editingId,
-    isProgram,
-    program,
-    readOnly,
-    listUrl,
-}: Pick<Props, 'initial' | 'editingId' | 'isProgram' | 'program' | 'readOnly' | 'listUrl'>) {
-    const form = useForm<Record<string, string>>(initial);
+type ProcurementList = {
+    id: number;
+    reference: string;
+    status: string;
+    total_cents: number;
+    items: { id: number; code: string; name: string; unit: string; quantity: number; price_cents: number; total_cents: number }[];
+};
 
+function useUnsavedPlanningEdits(dirty: boolean) {
     useEffect(() => {
         const warn = (event: BeforeUnloadEvent) => {
-            if (form.isDirty && !readOnly) {
+            if (dirty) {
                 event.preventDefault();
                 event.returnValue = '';
             }
@@ -86,7 +90,7 @@ function Editor({
         window.addEventListener('beforeunload', warn);
 
         const stop = router.on('before', (event) => {
-            if (event.detail.visit.method === 'get' && form.isDirty && !readOnly && !window.confirm('Leave without saving your changes?')) {
+            if (event.detail.visit.method === 'get' && dirty && !window.confirm('Leave without saving your changes?')) {
                 event.preventDefault();
             }
         });
@@ -95,10 +99,134 @@ function Editor({
             window.removeEventListener('beforeunload', warn);
             stop();
         };
-    }, [form.isDirty, readOnly]);
+    }, [dirty]);
+}
+
+function AipInformation({ document, year, canWrite, showDetails }: Pick<Props, 'document' | 'year' | 'canWrite'> & { showDetails: boolean }) {
+    const form = useForm({
+        office_id: document.office.id,
+        fiscal_year: year,
+        title: document.title,
+        description: document.description ?? '',
+        revision: document.revision ?? 1,
+    });
+    useUnsavedPlanningEdits(form.isDirty && canWrite);
+    return (
+        <details className="rounded-xl border border-slate-200 bg-white shadow-sm" open={!document.id || showDetails}>
+            <summary className="cursor-pointer px-5 py-4 font-semibold text-blue-950">AIP information</summary>
+            <form
+                className="space-y-3 border-t p-5"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!canWrite || form.processing) return;
+                    if (document.id) form.put('/aips/documents/' + document.id, { preserveState: 'errors' });
+                    else form.post('/aips/documents', { preserveState: 'errors' });
+                }}
+            >
+                <p>
+                    {document.office.name} · FY {year}
+                </p>
+                <label className="block">
+                    AIP title
+                    <input
+                        required
+                        maxLength={255}
+                        className={inputClass}
+                        readOnly={!canWrite}
+                        value={form.data.title}
+                        onChange={(e) => form.setData('title', e.target.value)}
+                    />
+                </label>
+                <label className="block">
+                    Description
+                    <textarea
+                        rows={3}
+                        maxLength={5000}
+                        className={inputClass}
+                        readOnly={!canWrite}
+                        value={form.data.description}
+                        onChange={(e) => form.setData('description', e.target.value)}
+                    />
+                </label>
+                {Object.entries(form.errors).map(([key, error]) => (
+                    <p className="text-red-700" key={key} role="alert">
+                        {error}
+                    </p>
+                ))}
+                {canWrite && (
+                    <button className={buttonClass} disabled={form.processing}>
+                        {document.id ? 'Save AIP details' : 'Create annual AIP'}
+                    </button>
+                )}
+            </form>
+        </details>
+    );
+}
+
+function SavedProcurement({ lists, ppaId }: { lists: ProcurementList[]; ppaId: number }) {
+    return (
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b p-4">
+                <h2 className="font-semibold">PPMP items</h2>
+                <Link className="rounded border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-800" href={'/aips/' + ppaId + '/ppmp'}>
+                    Open monthly PPMP
+                </Link>
+            </header>
+            {lists.length === 0 && <p className="p-4 text-sm text-slate-600">No saved procurement lists for this PPA.</p>}
+            {lists.map((list) => (
+                <details key={list.id} open={lists.length === 1} className="border-b last:border-0">
+                    <summary className="cursor-pointer p-4 text-sm font-semibold">
+                        {list.reference} · {list.status} · {money(list.total_cents)}
+                    </summary>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr>
+                                    {['Code', 'Item description', 'Unit', 'Qty', 'Unit cost', 'Total'].map((h) => (
+                                        <th key={h} className="p-2">
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {list.items.map((item) => (
+                                    <tr key={item.id} className="border-t">
+                                        <td className="p-2">{item.code}</td>
+                                        <td>{item.name}</td>
+                                        <td>{item.unit}</td>
+                                        <td>{item.quantity}</td>
+                                        <td>{money(item.price_cents)}</td>
+                                        <td>{money(item.total_cents)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            ))}
+        </section>
+    );
+}
+
+function Editor({
+    initial,
+    editingId,
+    isProgram,
+    program,
+    readOnly,
+    listUrl,
+    budget,
+    document,
+}: Pick<Props, 'budget' | 'document' | 'initial' | 'editingId' | 'isProgram' | 'program' | 'readOnly' | 'listUrl'>) {
+    const form = useForm<Record<string, string>>(initial);
+
+    useUnsavedPlanningEdits(form.isDirty && !readOnly);
 
     const total = amountFields.reduce((sum, [key]) => sum + Math.round((Number(form.data[key]) || 0) * 100), 0);
 
+    const original = amountFields.reduce((sum, [key]) => sum + Math.round((Number(initial[key]) || 0) * 100), 0);
+    const remainingAfterSave = budget.remaining_cents === null ? null : budget.remaining_cents + (editingId ? original : 0) - total;
     const textFields = isProgram
         ? [
               ['reference', 'Program reference code'],
@@ -128,7 +256,7 @@ function Editor({
             )}
 
             <form
-                className="mt-5 space-y-4"
+                className={isProgram ? 'mt-5 space-y-4' : 'mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]'}
                 onSubmit={(event) => {
                     event.preventDefault();
                     if (readOnly) return;
@@ -140,7 +268,7 @@ function Editor({
                     }
                 }}
             >
-                <fieldset disabled={readOnly || form.processing} className="space-y-4">
+                <fieldset disabled={readOnly || form.processing} className="min-w-0 space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         {textFields.map(([key, label]) => (
                             <label key={key} className="block text-sm">
@@ -181,6 +309,8 @@ function Editor({
                             {[
                                 ['description', 'Description'],
                                 ['expected_output', 'Expected output'],
+                                ['performance_indicator', 'Performance indicator'],
+                                ['physical_target', 'Physical target'],
                             ].map(([key, label]) => (
                                 <label key={key} className="block text-sm">
                                     {label}
@@ -222,21 +352,45 @@ function Editor({
                     )}
                 </fieldset>
 
-                {Object.entries(form.errors).map(([key, error]) => (
-                    <p key={key} role="alert" className="text-sm text-red-700">
-                        {error}
-                    </p>
-                ))}
+                {!isProgram && (
+                    <aside className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                        <h3 className="font-semibold text-blue-950">Budget summary · {initial.fiscal_year}</h3>
+                        <p>{document.office.name}</p>
+                        <dl className="space-y-3">
+                            <div>
+                                <dt>Office budget</dt>
+                                <dd className="font-semibold">{budget.ceiling_cents === null ? 'Not assigned' : money(budget.ceiling_cents)}</dd>
+                            </div>
+                            <div className="rounded bg-emerald-50 p-3 text-emerald-900">
+                                <dt>This PPA allocation</dt>
+                                <dd className="text-lg font-bold">{money(total)}</dd>
+                            </div>
+                            <div>
+                                <dt>Office balance after this allocation</dt>
+                                <dd className={remainingAfterSave !== null && remainingAfterSave < 0 ? 'font-bold text-red-700' : 'font-bold'}>
+                                    {remainingAfterSave === null ? 'Not assigned' : money(remainingAfterSave)}
+                                </dd>
+                            </div>
+                        </dl>
+                    </aside>
+                )}
+                <div className="space-y-3 lg:col-span-2">
+                    {Object.entries(form.errors).map(([key, error]) => (
+                        <p key={key} role="alert" className="text-sm text-red-700">
+                            {error}
+                        </p>
+                    ))}
 
-                <div className="flex items-center gap-4">
-                    {!readOnly && (
-                        <button className={buttonClass} disabled={form.processing}>
-                            {form.processing ? 'Saving…' : isProgram ? 'Save heading' : 'Save PPA'}
-                        </button>
-                    )}
-                    <Link href={listUrl} className="text-blue-700 underline">
-                        {readOnly ? 'Back' : 'Cancel'}
-                    </Link>
+                    <div className="flex items-center gap-4">
+                        {!readOnly && (
+                            <button className={buttonClass} disabled={form.processing}>
+                                {form.processing ? 'Saving…' : isProgram ? 'Save heading' : 'Save PPA'}
+                            </button>
+                        )}
+                        <Link href={listUrl} className="text-blue-700 underline">
+                            {readOnly ? 'Back' : 'Cancel'}
+                        </Link>
+                    </div>
                 </div>
             </form>
         </section>
@@ -246,6 +400,8 @@ function Editor({
 export default function Ppas(props: Props) {
     const { document, year, canWrite, listUrl, workspaceUrl, plans, budget, editorVisible, message } = props;
 
+    const section = planningSection(usePage().url);
+    const listOnly = section === 'ppas' && !editorVisible;
     const [collapsedPrograms, setCollapsedPrograms] = useState<number[]>([]);
     function toggleProgram(id: number) {
         setCollapsedPrograms((current) => (current.includes(id) ? current.filter((programId) => programId !== id) : [...current, id]));
@@ -266,9 +422,9 @@ export default function Ppas(props: Props) {
             <div className="aip-workspace min-w-0 flex-1 space-y-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{document.title}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{listOnly ? 'PPA List' : document.title}</h1>
                         <p className="mt-1 text-sm text-slate-600">
-                            {document.office.code} · {document.office.name}
+                            {document.office.code} · {document.office.name} · FY {year}
                         </p>
                     </div>
 
@@ -276,7 +432,7 @@ export default function Ppas(props: Props) {
                         className="flex items-end gap-3"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            router.get(workspaceUrl, { year: filterYear });
+                            router.get(workspaceUrl, { year: filterYear, ...(section ? { section } : {}) });
                         }}
                     >
                         <label>
@@ -295,60 +451,85 @@ export default function Ppas(props: Props) {
                     </form>
                 </header>
 
-                <section aria-label="Office budget summary" className="grid gap-3 md:grid-cols-3">
-                    {(
-                        [
-                            { label: 'Office budget', value: budget.ceiling_cents, Icon: Wallet, iconStyle: 'bg-blue-700 text-white' },
-                            { label: 'Allocated to PPAs', value: budget.allocated_cents, Icon: ClipboardList, iconStyle: 'bg-green-700 text-white' },
-                            {
-                                label: 'Remaining office budget',
-                                value: budget.remaining_cents,
-                                Icon: Coins,
-                                iconStyle: 'bg-amber-400 text-amber-950',
-                            },
-                        ] as const
-                    ).map(({ label, value, Icon, iconStyle }) => (
-                        <div key={label} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                            <div className={`grid size-10 shrink-0 place-items-center rounded-lg ${iconStyle}`}>
-                                <Icon aria-hidden="true" className="size-5" />
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-sm text-slate-600">{label}</p>
-                                <p className="mt-1 text-lg font-bold break-words text-slate-900 tabular-nums xl:text-xl">
-                                    {value === null ? 'Not assigned' : money(value)}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </section>
-
-                <section aria-label="Office budget allocation" className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    {allocatedPercent !== null && (
-                        <>
-                            <div className="mb-2 flex items-center justify-between gap-2 text-sm">
-                                <span className="font-medium text-slate-700">Office budget allocated</span>
-                                <strong className={allocatedPercent > 100 ? 'text-red-700' : 'text-blue-800'}>
-                                    {allocatedPercent.toLocaleString('en-PH', { maximumFractionDigits: 1 })}%
-                                </strong>
-                            </div>
-                            <progress
-                                aria-label="Percentage of office budget allocated to PPAs"
-                                aria-valuetext={allocatedPercent.toLocaleString('en-PH', { maximumFractionDigits: 1 }) + '% allocated'}
-                                className="aip-allocation-progress"
-                                max={100}
-                                value={Math.min(100, Math.max(0, allocatedPercent))}
+                <PlanningStages
+                    workspace={listUrl}
+                    summary={document.id ? '/aips/documents/' + document.id + '/summary' : null}
+                    current={listOnly || editorVisible ? 'ppas' : 'info'}
+                />
+                {!listOnly && (
+                    <>
+                        {!editorVisible && (
+                            <AipInformation
+                                showDetails={section !== 'ppas'}
+                                key={document.office.id + '-' + year}
+                                document={document}
+                                year={year}
+                                canWrite={canWrite}
                             />
-                        </>
-                    )}
-                    <p className="mt-1 text-xs text-slate-600">Allocations include draft PPAs.</p>
-                </section>
+                        )}
+                        <section aria-label="Office budget summary" className="grid gap-3 md:grid-cols-3">
+                            {(
+                                [
+                                    { label: 'Office budget', value: budget.ceiling_cents, Icon: Wallet, iconStyle: 'bg-blue-700 text-white' },
+                                    {
+                                        label: 'Allocated to PPAs',
+                                        value: budget.allocated_cents,
+                                        Icon: ClipboardList,
+                                        iconStyle: 'bg-green-700 text-white',
+                                    },
+                                    {
+                                        label: 'Remaining office budget',
+                                        value: budget.remaining_cents,
+                                        Icon: Coins,
+                                        iconStyle: 'bg-amber-400 text-amber-950',
+                                    },
+                                ] as const
+                            ).map(({ label, value, Icon, iconStyle }) => (
+                                <div
+                                    key={label}
+                                    className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                                >
+                                    <div className={`grid size-10 shrink-0 place-items-center rounded-lg ${iconStyle}`}>
+                                        <Icon aria-hidden="true" className="size-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm text-slate-600">{label}</p>
+                                        <p className="mt-1 text-lg font-bold break-words text-slate-900 tabular-nums xl:text-xl">
+                                            {value === null ? 'Not assigned' : money(value)}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </section>
 
-                {budget.ceiling_cents === null && (
-                    <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                        You can organize program headings now. The Budget Office must assign a budget before you save PPAs.
-                    </p>
+                        <section aria-label="Office budget allocation" className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                            {allocatedPercent !== null && (
+                                <>
+                                    <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                                        <span className="font-medium text-slate-700">Office budget allocated</span>
+                                        <strong className={allocatedPercent > 100 ? 'text-red-700' : 'text-blue-800'}>
+                                            {allocatedPercent.toLocaleString('en-PH', { maximumFractionDigits: 1 })}%
+                                        </strong>
+                                    </div>
+                                    <progress
+                                        aria-label="Percentage of office budget allocated to PPAs"
+                                        aria-valuetext={allocatedPercent.toLocaleString('en-PH', { maximumFractionDigits: 1 }) + '% allocated'}
+                                        className="aip-allocation-progress"
+                                        max={100}
+                                        value={Math.min(100, Math.max(0, allocatedPercent))}
+                                    />
+                                </>
+                            )}
+                            <p className="mt-1 text-xs text-slate-600">Allocations include draft PPAs.</p>
+                        </section>
+
+                        {budget.ceiling_cents === null && (
+                            <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                                You can organize program headings now. The Budget Office must assign a budget before you save PPAs.
+                            </p>
+                        )}
+                    </>
                 )}
-
                 {message && (
                     <p role="status" className="rounded-lg bg-blue-50 p-4 text-blue-950">
                         {message}
@@ -364,6 +545,8 @@ export default function Ppas(props: Props) {
                 {editorVisible && (
                     <Editor
                         key={`${props.editingId ?? 'new'}-${props.program?.id ?? 'program'}-${props.initial.version}-${year}`}
+                        budget={budget}
+                        document={document}
                         initial={props.initial}
                         editingId={props.editingId}
                         isProgram={props.isProgram}
@@ -372,6 +555,8 @@ export default function Ppas(props: Props) {
                         listUrl={listUrl}
                     />
                 )}
+
+                {editorVisible && props.editingId && !props.isProgram && <SavedProcurement lists={props.procurementLists} ppaId={props.editingId} />}
 
                 {plans.data.length === 0 && (
                     <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
@@ -453,6 +638,9 @@ export default function Ppas(props: Props) {
                                                     <td className="p-3 capitalize">{ppa.status}</td>
                                                     <td className="p-3">{money(ppa.total_cents)}</td>
                                                     <td className="space-x-4 p-3">
+                                                        <Link href={`/aips/${ppa.id}/ppmp`} className="font-semibold text-blue-700 underline">
+                                                            Open PPMP
+                                                        </Link>
                                                         <Link href={`/aips/${ppa.id}/view`} className="text-blue-700 underline">
                                                             View
                                                         </Link>
@@ -477,8 +665,10 @@ export default function Ppas(props: Props) {
                         Page {plans.current_page} of {plans.last_page}
                     </p>
                     <div className="flex gap-4 text-blue-700">
-                        {plans.prev_page_url && <Link href={plans.prev_page_url}>Previous</Link>}
-                        {plans.next_page_url && <Link href={plans.next_page_url}>Next</Link>}
+                        {plans.prev_page_url && (
+                            <Link href={section ? planningLink(plans.prev_page_url, section) : plans.prev_page_url}>Previous</Link>
+                        )}
+                        {plans.next_page_url && <Link href={section ? planningLink(plans.next_page_url, section) : plans.next_page_url}>Next</Link>}
                     </div>
                 </div>
             </div>
