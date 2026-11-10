@@ -7,7 +7,6 @@ use App\Models\Office;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\PlanningService;
-use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\PpaTestCase;
 
@@ -43,8 +42,8 @@ class PpmpAccessTest extends PpaTestCase
         $this->put($url.'/'.$sheet->id, [])->assertStatus(409);
         $this->get('/aips/'.$other->id.'/ppmp?sheet='.$sheet->id)->assertNotFound();
         $this->put('/aips/'.$other->id.'/ppmp/'.$sheet->id, [])->assertNotFound();
-        $this->expectException(ValidationException::class);
         app(PlanningService::class)->transition($this->planner, $sheet, 'submit', 1, null);
+        $this->assertSame('submitted', $sheet->fresh()->status);
     }
 
     public function test_submitted_ppa_freezes_new_drafts(): void
