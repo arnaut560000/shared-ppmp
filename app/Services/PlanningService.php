@@ -54,7 +54,10 @@ class PlanningService
             PlanningAccess::roles($user, ['admin', 'office']);
             abort_unless(in_array($existing?->type ?? $data['type'], ['aip', 'ppmp'], true), 422);
             Office::whereKey($existing?->office_id ?? $data['office_id'])->lockForUpdate()->firstOrFail();
-            $parentPpa = PpaHierarchy::prepare($user, $data, $existing);
+            $officeId = (int) ($existing?->office_id ?? $data['office_id']);
+            $year = (int) ($existing?->fiscal_year ?? $data['fiscal_year']);
+            Budget::where('office_id', $officeId)->where('fiscal_year', $year)->lockForUpdate()->first();
+            PpaHierarchy::prepare($user, $data, $existing);
 
             if ($existing) {
                 $existing = Plan::whereKey($existing->id)
@@ -109,28 +112,29 @@ class PlanningService
                 foreach ($lines as $line) {
                     $amounts[strtolower($line['expense_class']).'_cents'] += $line['total_cents'];
                 }
-            } else {
-                foreach (array_keys($amounts) as $key) {
-                    $amounts[$key] = self::cents(
-                        $data[str_replace('_cents', '', $key)] ?? 0
-                    );
+                if (array_sum($amounts) <= 0) {
+                    self::fail('The procurement total must be greater than zero.');
                 }
 
-                $data['parent_id'] = null;
-            }
-
-            if ($data['type'] === 'aip') {
-                PpaHierarchy::validateAmounts(
-                    $amounts,
-                    $parentPpa,
-                    $existing
+                $budget = OfficeBudgetService::summary($officeId, $year, $existing?->id);
+                OfficeBudgetService::requireAvailable($budget, array_sum($amounts));
+            } else {
+                $amounts['ps_cents'] = self::cents($data['ps'] ?? 0);
+                $amounts['fe_cents'] = self::cents($data['fe'] ?? 0);
+                if ($amounts['ps_cents'] < 0 || $amounts['fe_cents'] < 0) {
+                    self::fail('PS and FE amounts must be zero or greater.');
+                }
+                $budget = OfficeBudgetService::summary($officeId, $year);
+                OfficeBudgetService::requireAvailable(
+                    $budget, $amounts['ps_cents'] + $amounts['fe_cents'],
+                    ($existing?->ps_cents ?? 0) + ($existing?->fe_cents ?? 0)
                 );
-            } elseif ($data['type'] === 'ppmp') {
-                PpaHierarchy::validateProcurement($amounts, (int) $data['parent_id'], $existing);
-            }
-
-            if (array_sum($amounts) <= 0) {
-                self::fail('The plan total must be greater than zero.');
+                if ($existing) {
+                    $costs = OfficeBudgetService::procurementByPpa($officeId, $year, $existing->id)->get($existing->id);
+                    $amounts['mooe_cents'] = (int) ($costs->mooe ?? 0);
+                    $amounts['co_cents'] = (int) ($costs->co ?? 0);
+                }
+                $data['parent_id'] = null;
             }
 
             $fields = array_intersect_key(
@@ -178,7 +182,9 @@ class PlanningService
                 ]);
 
                 $plan = $existing;
-                $plan->items()->delete();
+                if ($plan->type === 'ppmp') {
+                    $plan->items()->delete();
+                }
             } else {
                 $plan = Plan::create([
                     ...$fields,
@@ -188,7 +194,16 @@ class PlanningService
                 ]);
             }
 
-            $plan->items()->createMany($lines);
+            if ($plan->type === 'ppmp') {
+                $plan->items()->createMany($lines);
+                // Keep the existing PPA amount columns in sync for callers reading the saved plan.
+                $costs = OfficeBudgetService::procurementByPpa($officeId, $year, $parent->id)->get($parent->id);
+                $parent->update([
+                    'mooe_cents' => (int) $costs->mooe,
+                    'co_cents' => (int) $costs->co,
+                    'total_cents' => $parent->ps_cents + $parent->fe_cents + $costs->mooe + $costs->co,
+                ]);
+            }
 
             self::audit(
                 $user,
@@ -204,7 +219,7 @@ class PlanningService
             );
 
             return $plan;
-        });
+        }, 3);
     }
 
     public function transition(
@@ -255,42 +270,15 @@ class PlanningService
                     );
                 }
 
-                if ($plan->type === 'aip') {
-                    $reserved = Plan::where('type', 'aip')
-                        ->where('office_id', $plan->office_id)
-                        ->where('fiscal_year', $plan->fiscal_year)
-                        ->where('id', '!=', $plan->id)
-                        ->sum('total_cents');
-
-                    if ($reserved + $plan->total_cents > $budget->ceiling_cents) {
-                        self::fail(
-                            'This AIP would exceed the office budget ceiling. Revise it or request an allocation adjustment.'
-                        );
-                    }
-                } else {
-                    $parent = Plan::whereKey($plan->parent_id)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $parent || $parent->status !== 'approved') {
-                        self::fail('The linked AIP must be approved.');
-                    }
-
-                    foreach (['mooe_cents', 'co_cents'] as $field) {
-                        $reserved = Plan::where('parent_id', $parent->id)
-                            ->where('type', 'ppmp')
-                            ->where('id', '!=', $plan->id)
-                            ->sum($field);
-
-                        if ($reserved + $plan->$field > $parent->$field) {
-                            self::fail(
-                                'PPMP requirements exceed the linked AIP '
-                                .strtoupper(str_replace('_cents', '', $field))
-                                .' allocation.'
-                            );
-                        }
+                if ($plan->type === 'ppmp') {
+                    $parent = Plan::whereKey($plan->parent_id)->lockForUpdate()->first();
+                    if (! $parent || $parent->type !== 'aip' || $parent->parent_ppa_id === null
+                        || $parent->office_id !== $plan->office_id || $parent->fiscal_year !== $plan->fiscal_year) {
+                        self::fail('The PPMP must belong to a PPA in the same office and fiscal year.');
                     }
                 }
+                // Submitting changes the status only. Its saved costs already count.
+                OfficeBudgetService::requireAvailable(OfficeBudgetService::summary($plan->office_id, $plan->fiscal_year), 0);
 
                 $plan->status = 'submitted';
                 $plan->submitted_at = now();
