@@ -45,9 +45,9 @@ class AipTest extends TestCase
             'expected_output' => 'Improved office capacity',
             'start_date' => '2027-01-01',
             'end_date' => '2027-12-31',
-            'ps' => '0',
+            'ps' => '100000.25',
             'mooe' => '100000.25',
-            'fe' => '0',
+            'fe' => '50000',
             'co' => '50000',
         ], $overrides);
     }
@@ -98,10 +98,10 @@ class AipTest extends TestCase
         $plan = $this->createDraft();
         $other = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
         $this->get("/aips/{$plan->id}/edit")->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('ppas')->where('editingId', $plan->id)->where('initial.mooe', '100000.25'));
+            ->component('ppas')->where('editingId', $plan->id)->where('initial.ps', '100000.25')->where('initial.mooe', '0.00'));
 
         $this->put("/aips/{$plan->id}", $this->payload([
-            'version' => 1, 'mooe' => '120000', 'office_id' => $other->id, 'fiscal_year' => 2028,
+            'version' => 1, 'ps' => '120000', 'office_id' => $other->id, 'fiscal_year' => 2028,
         ]))->assertSessionHasNoErrors()->assertRedirect();
         $plan->refresh();
         $this->assertSame(17000000, $plan->total_cents);
@@ -137,14 +137,12 @@ class AipTest extends TestCase
         $this->put("/aips/{$plan->id}", $this->payload(['version' => 1]))->assertForbidden();
     }
 
-    public function test_invalid_dates_zero_total_and_duplicate_reference_are_rejected(): void
+    public function test_zero_cost_ppa_can_start_but_invalid_dates_and_duplicate_references_are_rejected(): void
     {
         $this->actingAs($this->planner)->post('/aips', $this->payload(['end_date' => '2028-01-01']))
             ->assertSessionHasErrors('end_date');
-        $this->post('/aips', $this->payload(['mooe' => '0', 'co' => '0']))
-            ->assertSessionHasErrors('workflow');
-        $this->assertDatabaseCount('plans', 1);
-        $this->createDraft();
+        $this->post('/aips', $this->payload(['ps' => '0', 'fe' => '0']))->assertSessionHasNoErrors();
+        $this->assertSame(0, Plan::where('type', 'aip')->sole()->total_cents);
         $this->post('/aips', $this->payload())->assertSessionHasErrors('reference');
         $this->assertDatabaseCount('plans', 2);
     }
