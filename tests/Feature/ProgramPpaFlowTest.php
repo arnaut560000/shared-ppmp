@@ -14,13 +14,13 @@ class ProgramPpaFlowTest extends PpaTestCase
             ->component('ppas')->where('editorVisible', true)->where('program.id', $this->main->id)
             ->where('initial.parent_ppa_id', (string) $this->main->id)->where('initial.reference', '2027-0-1-001')
             ->where('initial.fund_source', '')->where('budget.remaining_cents', 1000000));
-        $child = $this->child();
+        $child = $this->child(['ps' => '6000']);
         $this->assertSame($this->main->id, $child->parent_ppa_id);
         $this->assertNull($child->parent_id);
         $this->assertSame($this->main->aip_document_id, $child->aip_document_id);
         $this->get('/aips?year=2027')->assertInertia(fn (Assert $p) => $p
             ->has('plans.data', 1)->where('plans.data.0.id', $this->main->id)
-            ->where('plans.data.0.children.0.id', $child->id)->where('budget.allocated_cents', 600000)->where('plans.data.0.total_cents', 600000));
+            ->where('plans.data.0.children.0.id', $child->id)->where('budget.spent_cents', 600000)->where('plans.data.0.total_cents', 600000));
         $this->get('/aips/'.$this->main->id.'/sub-ppas/create')->assertInertia(fn (Assert $p) => $p
             ->where('initial.reference', '2027-0-1-002')->where('budget.remaining_cents', 400000));
         $this->actingAs(User::factory()->create(['role' => 'admin']))->get('/aips?year=2027')
@@ -46,9 +46,9 @@ class ProgramPpaFlowTest extends PpaTestCase
         $this->assertDatabaseCount('plans', 1);
         $child = $this->child();
         $this->post('/aips', $this->childData())->assertSessionHasErrors('reference');
-        $this->put('/aips/'.$child->id, $this->childData(['version' => 1, 'mooe' => '5000']))->assertSessionHasNoErrors();
+        $this->put('/aips/'.$child->id, $this->childData(['version' => 1, 'ps' => '5000']))->assertSessionHasNoErrors();
         $this->put('/aips/'.$child->id, $this->childData(['version' => 1]))->assertSessionHasErrors('workflow');
-        $this->assertSame(500000, $child->fresh()->mooe_cents);
+        $this->assertSame(500000, $child->fresh()->ps_cents);
         $this->assertDatabaseCount('plans', 2);
     }
 
