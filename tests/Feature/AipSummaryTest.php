@@ -23,7 +23,7 @@ class AipSummaryTest extends PpaTestCase
         ]])->assertSessionHasNoErrors();
         $url = '/aips/documents/'.$ppa->aip_document_id.'/summary';
         $this->get($url)->assertInertia(fn (Assert $p) => $p->component('aip-summary')->has('programs', 16)
-            ->where('ceiling', 1000000)->where('programs.0.ppas.0.total_cents', 600000)
+            ->where('ceiling', 1000000)->where('programs.0.ppas.0.total_cents', 125000)->where('budget.remaining_cents', 875000)
             ->where('programs.0.ppas.0.procurement_cents', 125000)->where('programs.0.ppas.0.item_count', 1)
             ->where('programs.0.ppas.0.performance_indicator', 'Number of publications')
             ->where('programs.0.ppas.0.physical_target', '24 publications'));
