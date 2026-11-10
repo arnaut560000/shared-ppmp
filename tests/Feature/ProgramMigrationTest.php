@@ -10,6 +10,7 @@ class ProgramMigrationTest extends PpaTestCase
     public function test_conversion_only_changes_heading_type_and_preserves_activities_and_amounts(): void
     {
         $child = $this->child();
+        $child->update(['mooe_cents' => 600000, 'total_cents' => 600000]);
         $this->main->update(['type' => 'aip', 'mooe_cents' => 50000000, 'total_cents' => 50000000, 'status' => 'approved']);
         $before = $this->main->fresh()->getAttributes();
         $childBefore = $child->fresh()->getAttributes();
