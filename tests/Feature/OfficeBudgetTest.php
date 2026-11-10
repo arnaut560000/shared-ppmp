@@ -28,12 +28,12 @@ class OfficeBudgetTest extends PpaTestCase
             ->assertSessionHasNoErrors();
         $this->get('/budgets?year=2028')->assertInertia(fn (Assert $p) => $p
             ->component('office-budgets')->where('offices.0.ceiling_cents', 50000000)
-            ->where('offices.0.allocated_cents', 0)->where('offices.0.remaining_cents', 50000000));
+            ->where('offices.0.spent_cents', 0)->where('offices.0.remaining_cents', 50000000));
     }
 
     public function test_budget_reduction_and_stale_updates_cannot_overwrite_allocations(): void
     {
-        $this->child();
+        $this->child(['ps' => '6000']);
         $this->actingAs(User::factory()->create(['role' => 'admin']));
         $this->post('/budgets', $this->allocation(['amount' => '5999.99']))->assertSessionHasErrors('workflow');
         $this->post('/budgets', $this->allocation(['expected_ceiling' => null]))->assertSessionHasErrors('workflow');
@@ -60,9 +60,9 @@ class OfficeBudgetTest extends PpaTestCase
     public function test_heading_legacy_amount_is_excluded_from_office_and_program_totals(): void
     {
         $this->main->update(['mooe_cents' => 50000000, 'total_cents' => 50000000]);
-        $this->child(['mooe' => '5000']);
+        $this->child(['fe' => '5000']);
         $this->get('/aips?year=2027')->assertInertia(fn (Assert $p) => $p
-            ->where('budget.allocated_cents', 500000)->where('budget.remaining_cents', 500000)
+            ->where('budget.spent_cents', 500000)->where('budget.remaining_cents', 500000)
             ->where('plans.data.0.total_cents', 500000)->where('plans.data.0.legacy_total_cents', 50000000));
     }
 }
