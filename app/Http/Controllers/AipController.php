@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\AipDocument;
-use App\Models\Budget;
 use App\Models\Office;
 use App\Models\Plan;
+use App\Services\OfficeBudgetService;
 use App\Services\PlanningAccess;
 use App\Services\PlanningService;
 use Illuminate\Http\RedirectResponse;
@@ -227,7 +227,7 @@ class AipController extends Controller
                 ],
             ];
 
-            foreach (['ps', 'mooe', 'fe', 'co'] as $field) {
+            foreach (['ps', 'fe'] as $field) {
                 $rules[$field] = [
                     'required', 'numeric', 'min:0',
                     'max:10000000000', 'decimal:0,2',
@@ -269,6 +269,7 @@ class AipController extends Controller
         $listUrl = $workspaceUrl.'?year='.$year;
         $isProgram = $editing ? $editing->type === 'program' : $program === null;
 
+        $procurement = OfficeBudgetService::procurementByPpa($document->office_id, $year);
         $plans = Plan::where('type', 'program')
             ->where('aip_document_id', $document->id)
             ->whereNotNull('aip_document_id')
@@ -285,14 +286,15 @@ class AipController extends Controller
                 'id' => $heading->id,
                 'reference' => $heading->reference,
                 'title' => $heading->title,
-                'total_cents' => (int) $heading->subPpas->sum('total_cents'),
+                'total_cents' => $heading->subPpas->sum(fn (Plan $ppa) => OfficeBudgetService::ppaTotal($ppa, $procurement)),
                 'legacy_total_cents' => $heading->total_cents,
                 'children' => $heading->subPpas->map(fn (Plan $ppa) => [
                     'id' => $ppa->id,
                     'reference' => $ppa->reference,
                     'title' => $ppa->title,
                     'status' => $ppa->status,
-                    'total_cents' => $ppa->total_cents,
+                    'total_cents' => OfficeBudgetService::ppaTotal($ppa, $procurement),
+                    'can_prepare_ppmp' => $canWrite && $ppa->permitsProcurementDrafts(),
                     'can_edit' => $canWrite
                         && in_array($ppa->status, ['draft', 'returned'], true),
                 ])->values(),
@@ -332,18 +334,11 @@ class AipController extends Controller
             'workflow' => '',
         ];
 
-        foreach (['ps', 'mooe', 'fe', 'co'] as $field) {
-            $initial[$field] = bcdiv(
-                (string) ($editing?->getAttribute($field.'_cents') ?? 0),
-                '100',
-                2
-            );
+        $costs = $editing?->type === 'aip' ? $procurement->get($editing->id) : null;
+        foreach (['ps' => $editing?->ps_cents, 'fe' => $editing?->fe_cents, 'mooe' => $costs->mooe ?? 0, 'co' => $costs->co ?? 0] as $field => $cents) {
+            $initial[$field] = bcdiv((string) ($cents ?? 0), '100', 2);
         }
-
-        $allocated = (int) $document->ppas()->sum('total_cents');
-
-        $budget = Budget::where('office_id', $document->office_id)
-            ->where('fiscal_year', $year)->first();
+        $budget = OfficeBudgetService::summary($document->office_id, $year);
 
         return Inertia::render('ppas', [
             'document' => $document,
@@ -352,11 +347,7 @@ class AipController extends Controller
             'listUrl' => $listUrl,
             'workspaceUrl' => $workspaceUrl,
             'plans' => $plans,
-            'budget' => [
-                'ceiling_cents' => $budget?->ceiling_cents,
-                'allocated_cents' => $allocated,
-                'remaining_cents' => $budget ? $budget->ceiling_cents - $allocated : null,
-            ],
+            'budget' => [...$budget, 'allocated_cents' => $budget['spent_cents']],
             'isProgram' => $isProgram,
             'program' => $program?->only(['id', 'reference', 'title']),
             'procurementLists' => $editing?->type === 'aip'
