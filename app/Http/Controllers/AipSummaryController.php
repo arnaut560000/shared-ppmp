@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AipDocument;
-use App\Models\Budget;
+use App\Services\OfficeBudgetService;
 use App\Services\PlanningAccess;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,6 +18,7 @@ class AipSummaryController extends Controller
         abort_if($user->role === 'office' && $user->office_id !== $document->office_id, 403);
         $document->load('office:id,name,code');
         // Read the complete annual document, independent of the workspace's current page.
+        $procurement = OfficeBudgetService::procurementByPpa($document->office_id, $document->fiscal_year);
         $programs = $document->programs()->orderBy('id')->with([
             'subPpas' => fn ($q) => $q->where('aip_document_id', $document->id)
                 ->where('office_id', $document->office_id)->where('fiscal_year', $document->fiscal_year)
@@ -27,18 +28,18 @@ class AipSummaryController extends Controller
         ])->get()->map(fn ($program) => [
             'id' => $program->id, 'title' => $program->title, 'reference' => $program->reference,
             'ppas' => $program->subPpas->map(fn ($ppa) => [
-                ...$ppa->only(['id', 'title', 'reference', 'status', 'total_cents', 'expected_output', 'performance_indicator', 'physical_target']),
+                ...$ppa->only(['id', 'title', 'reference', 'status', 'expected_output', 'performance_indicator', 'physical_target']),
+                'total_cents' => OfficeBudgetService::ppaTotal($ppa, $procurement),
                 'item_count' => (int) $ppa->procurementLists->sum('items_count'),
-                'procurement_cents' => (int) $ppa->procurementLists->sum('total_cents'),
+                'procurement_cents' => (int) ($procurement->get($ppa->id)->mooe ?? 0) + (int) ($procurement->get($ppa->id)->co ?? 0),
             ])->values(),
         ])->values();
-        $ceiling = Budget::where('office_id', $document->office_id)
-            ->where('fiscal_year', $document->fiscal_year)->value('ceiling_cents');
+        $budget = OfficeBudgetService::summary($document->office_id, $document->fiscal_year);
 
         return Inertia::render('aip-summary', [
             'document' => $document, 'programs' => $programs,
             'year' => $document->fiscal_year, 'listUrl' => route('aips.documents.show', $document),
-            'ceiling' => $ceiling === null ? null : (int) $ceiling,
+            'budget' => $budget, 'ceiling' => $budget['ceiling_cents'],
         ]);
     }
 }
