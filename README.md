@@ -79,22 +79,19 @@ The focused tests cover service permissions, office budget reservations, stale v
 
 1. Admin or Budget Office opens **Office budget allocations** and assigns an amount per department and fiscal year.
 2. Department users open their own annual AIP automatically. **Add program heading** creates a reference and title, with no budget entry.
-3. Use the green **+ Add PPA** under a heading to enter an activity, schedule, outputs, funding and PS/MOOE/FE/CO amounts.
-4. Every PPA allocation, including drafts and returned PPAs, counts against the office budget. All programs share that budget. Editing excludes the PPA's previous amount.
-5. Program totals are calculated from their PPAs. Headings never consume a second allocation. Only Budget Office and Admin can change ceilings; a ceiling cannot be reduced below current allocations.
-6. Select **Open PPMP** beside an individual PPA. Enter January–December quantities for each active MOOE or CO catalogue item. Quarterly and annual totals are calculated from the monthly quantities. The amount available for this list excludes other PPMP lists on the same PPA; procurement costs never deduct from the office budget twice.
-7. Departments and administrators can prepare lists while the PPA is draft, returned or approved. Submission still requires an approved PPA. Existing quarterly-only lists are readable without inventing a monthly distribution. Saved item prices and specifications are retained during edits.
+3. Use **+ Add PPA** under a heading to enter an activity, schedule, outputs and funding. PS and FE are entered manually. The system calculates MOOE and CO from saved PPMP items.
+4. The office shares one ceiling across its PPAs for the fiscal year. Its remaining balance is the ceiling minus saved PPMP line costs and manual PPA PS and FE. Draft costs count. Editing a saved list replaces its previous cost.
+5. Only Budget Office and Admin can change ceilings. A ceiling must cover current spending.
+6. Choose **+ Add PPMP** on a PPA to start a new monthly list. Choose **Open PPMP** to revisit its lists. Office users and administrators can prepare lists for draft, returned or approved PPAs. Older quarterly-only lists open read-only.
+7. Select **+ Add item from catalog**, enter monthly quantities, click **Add to PPMP**, then **Save monthly draft**. Saving deducts the item cost from the office balance. Existing lines keep their saved prices and specifications.
 
-For a local demonstration with an empty catalogue, optionally run `php artisan tinker` and add this sample item:
+To load the FY 2027 Talavera catalogue into a local checkout, run:
 
-```php
-\App\Models\CatalogueItem::firstOrCreate(['code' => 'DEMO-PAPER-A4'], [
-    'name' => 'A4 bond paper', 'specification' => '500 sheets per ream', 'unit' => 'ream',
-    'category' => 'Office supplies', 'expense_class' => 'MOOE', 'price_cents' => 25000, 'active' => true,
-]);
+```powershell
+php artisan db:seed --class=PpmpCatalogueSeeder
 ```
 
-With a funded PPA, two reams in January and three in February should show five reams and PHP 1,250 in Q1.
+The import adds missing codes and preserves existing catalogue entries. It includes 2,220 MOOE items and 95 CO items from the FY 2027 ICT-PIO workbook. Nineteen named entries lacked a positive price or a unit and were omitted. To verify a fresh import, search for `A-1` (CLEARBOOK, A4 size). Two pieces at PHP 43.00 each total PHP 86.00.
 
 Existing office assignments and financial records are preserved. Migration 2026_11_03 converts old root AIP rows into program headings, leaving their fields and amounts intact for reference. The UI clearly labels these previous heading amounts as inactive; actual budgets are entered on the PPAs. The migration refuses conversion if a PPMP still references an old root, and does not offer automatic rollback. Back up the database before applying it.
 
@@ -333,4 +330,4 @@ CREATE TABLE audit_events (
 
 ### Annual plan entry and review
 
-Use **AIP details** to create or reopen the office's plan for the selected year and save its title and description. Under **PPAs and PPMP**, enter the expected output, performance indicator and physical target for each activity. **Review AIP** lists activities across all program pages with their allocated amounts, saved procurement costs and item-line counts. The office balance subtracts PPA allocations once. Review is read-only and does not change approval status.
+Use **AIP details** to create or reopen the office's plan for the selected year and save its title and description. Under **PPAs and PPMP**, enter the expected output, performance indicator and physical target for each activity. **Review AIP** lists activities across all program pages with their allocated amounts, saved procurement costs and item-line counts. The office balance includes saved PPMP line costs and manual PS and FE once each. Review is read-only and does not change approval status.
