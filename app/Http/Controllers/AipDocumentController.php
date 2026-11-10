@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AipDocument;
 use App\Models\Office;
+use App\Services\OfficeBudgetService;
 use App\Services\PlanningAccess;
 use App\Services\PlanningService;
 use Illuminate\Http\RedirectResponse;
@@ -33,8 +34,13 @@ class AipDocumentController extends Controller
                 ->orderBy('name')->get(['id', 'code', 'name']),
             'documents' => AipDocument::query()->visibleTo($user)
                 ->where('fiscal_year', $year)->with('office:id,code,name')
-                ->withCount('ppas')->withSum('ppas', 'total_cents')
-                ->orderBy('office_id')->paginate(15)->withQueryString(),
+                ->withCount('ppas')
+                ->orderBy('office_id')->paginate(15)->withQueryString()
+                ->through(function (AipDocument $document) {
+                    $budget = OfficeBudgetService::summary($document->office_id, $document->fiscal_year);
+
+                    return [...$document->toArray(), 'budget' => $budget, 'ppas_sum_total_cents' => $budget['spent_cents']];
+                }),
             'message' => $request->session()->get('success'),
         ]);
     }
