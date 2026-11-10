@@ -16,7 +16,7 @@ class MonthlyPpmpTest extends PpaTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->ppa = $this->child(['mooe' => '1500']);
+        $this->ppa = $this->child();
         $this->paper = CatalogueItem::create(['code' => 'A4', 'name' => 'Paper', 'unit' => 'ream', 'category' => 'Supplies',
             'expense_class' => 'MOOE', 'price_cents' => 25000, 'active' => true]);
     }
@@ -41,10 +41,10 @@ class MonthlyPpmpTest extends PpaTestCase
         $this->assertSame($this->schedulePayload()['items'][0]['monthly_quantities'], $line->monthly_quantities);
         $this->assertSame(150000, $sheet->total_cents);
         $this->get($this->url())->assertInertia(fn (Assert $p) => $p->component('ppmp')
-            ->where('selected.id', $sheet->id)->where('canEdit', true)->where('available.MOOE', 150000));
-        $this->get($this->url().'?new=1')->assertInertia(fn (Assert $p) => $p->where('available.MOOE', 0));
-        $this->get('/aips?year=2027')->assertInertia(fn (Assert $p) => $p->where('budget.allocated_cents', 150000));
-        $this->post($this->url(), [...$this->schedulePayload(), 'reference' => 'PL-002'])->assertSessionHasErrors('workflow');
+            ->where('selected.id', $sheet->id)->where('canEdit', true)->where('available_for_sheet_cents', 1000000));
+        $this->get($this->url().'?new=1')->assertInertia(fn (Assert $p) => $p->where('available_for_sheet_cents', 850000));
+        $this->get('/aips?year=2027')->assertInertia(fn (Assert $p) => $p->where('budget.spent_cents', 150000));
+        $this->post($this->url(), [...$this->schedulePayload(), 'reference' => 'PL-002'])->assertSessionHasNoErrors();
         $this->post($this->url(), $this->schedulePayload())->assertSessionHasErrors('reference');
     }
 
