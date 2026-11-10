@@ -33,7 +33,7 @@ abstract class PpaTestCase extends TestCase
             'type' => 'aip', 'office_id' => $this->planner->office_id, 'fiscal_year' => 2027,
             'reference' => '2027-0-1', 'title' => 'Main PPA', 'fund_source' => 'GF',
             'start_date' => '2027-01-01', 'end_date' => '2027-12-31',
-            'ps' => '1000', 'mooe' => '10000', 'fe' => '100', 'co' => '2000',
+            'ps' => '1000', 'fe' => '100',
         ], $changes);
     }
 
@@ -43,7 +43,7 @@ abstract class PpaTestCase extends TestCase
             'aip_document_id' => $this->main->aip_document_id,
             'parent_ppa_id' => $this->main->id,
             'reference' => '2027-0-1-001', 'title' => 'Sub-PPA',
-            'ps' => '0', 'mooe' => '6000', 'fe' => '0', 'co' => '0',
+            'ps' => '0', 'fe' => '0',
         ], $changes));
     }
 
