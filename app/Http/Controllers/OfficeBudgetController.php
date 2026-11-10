@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Budget;
 use App\Models\Office;
-use App\Models\Plan;
+use App\Services\OfficeBudgetService;
 use App\Services\PlanningAccess;
 use App\Services\PlanningService;
 use Illuminate\Http\RedirectResponse;
@@ -26,23 +26,14 @@ class OfficeBudgetController extends Controller
         $year = (int) ($data['year'] ?? now()->year);
 
         $offices = Office::orderBy('name')->get()->map(function (Office $office) use ($year) {
-            $budget = Budget::where('office_id', $office->id)
-                ->where('fiscal_year', $year)->first();
-
-            $allocated = (int) Plan::where('type', 'aip')
-                ->where('office_id', $office->id)
-                ->where('fiscal_year', $year)
-                ->sum('total_cents');
+            $summary = OfficeBudgetService::summary($office->id, $year);
 
             return [
                 'id' => $office->id,
                 'code' => $office->code,
                 'name' => $office->name,
-                'ceiling_cents' => $budget?->ceiling_cents,
-                'allocated_cents' => $allocated,
-                'remaining_cents' => $budget
-                    ? $budget->ceiling_cents - $allocated
-                    : null,
+                ...$summary,
+                'allocated_cents' => $summary['spent_cents'],
             ];
         });
 
@@ -84,16 +75,10 @@ class OfficeBudgetController extends Controller
 
             $ceiling = PlanningService::cents($data['amount']);
 
-            $allocated = (int) Plan::where('type', 'aip')
-                ->where('office_id', $data['office_id'])
-                ->where('fiscal_year', $data['fiscal_year'])
-                ->sum('total_cents');
-
-            if ($ceiling < $allocated) {
-                PlanningService::fail(
-                    'The office budget cannot be lower than its existing PPA allocations: PHP '
-                    .number_format($allocated / 100, 2).'.'
-                );
+            $spent = OfficeBudgetService::summary((int) $data['office_id'], (int) $data['fiscal_year'])['spent_cents'];
+            if ($ceiling < $spent) {
+                PlanningService::fail('The ceiling cannot be lower than current office spending of PHP '
+                    .number_format($spent / 100, 2).'.');
             }
 
             $budget = Budget::updateOrCreate([
@@ -110,7 +95,7 @@ class OfficeBudgetController extends Controller
                 null,
                 ['previous_cents' => $expected, 'ceiling_cents' => $ceiling]
             );
-        });
+        }, 3);
 
         return to_route('budgets.index', ['year' => $data['fiscal_year']])
             ->with('success', 'Office budget saved.');
