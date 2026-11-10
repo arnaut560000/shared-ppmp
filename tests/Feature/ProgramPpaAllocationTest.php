@@ -37,6 +37,19 @@ class ProgramPpaAllocationTest extends PpaTestCase
         $this->assertSame('Renamed program', $this->main->fresh()->title);
     }
 
+    public function test_editing_details_without_amounts_preserves_existing_manual_expenses(): void
+    {
+        $ppa = $this->child(['ps' => '125.50', 'fe' => '25']);
+        $data = $this->childData(['version' => 1, 'title' => 'Updated activity']);
+        unset($data['ps'], $data['fe']);
+        $this->put('/aips/'.$ppa->id, $data)->assertSessionHasNoErrors()->assertRedirect();
+        $ppa->refresh();
+        $this->assertSame('Updated activity', $ppa->title);
+        $this->assertSame(12550, $ppa->ps_cents);
+        $this->assertSame(2500, $ppa->fe_cents);
+        $this->assertSame(15050, $ppa->total_cents);
+    }
+
     public function test_budget_is_shared_across_programs_but_isolated_by_year(): void
     {
         $this->child(['ps' => '6000']);
@@ -48,11 +61,18 @@ class ProgramPpaAllocationTest extends PpaTestCase
             ->assertSessionHasNoErrors();
     }
 
-    public function test_heading_can_exist_without_budget_but_ppa_cannot(): void
+    public function test_unfunded_office_can_create_an_unpriced_ppa_but_cannot_add_expenses(): void
     {
         Budget::query()->delete();
         $this->post('/aips', $this->data(['reference' => 'NO-BUDGET']))->assertSessionHasNoErrors();
-        $this->post('/aips', $this->childData())->assertSessionHasErrors('workflow');
-        $this->assertSame(0, Plan::where('type', 'aip')->count());
+        $this->get('/aips/'.$this->main->id.'/ppas/create')->assertInertia(fn ($page) => $page
+            ->missing('initial.ps')->missing('initial.fe')->missing('initial.mooe')->missing('initial.co'));
+        $data = $this->childData();
+        unset($data['ps'], $data['fe']);
+        $this->post('/aips', $data)->assertSessionHasNoErrors()->assertRedirect();
+        $ppa = Plan::where('type', 'aip')->sole();
+        $this->assertSame(0, $ppa->total_cents);
+        $this->put('/aips/'.$ppa->id, [...$data, 'version' => 1, 'ps' => '0.01'])->assertSessionHasErrors('workflow');
+        $this->assertSame(0, $ppa->fresh()->total_cents);
     }
 }

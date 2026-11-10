@@ -229,7 +229,7 @@ class AipController extends Controller
 
             foreach (['ps', 'fe'] as $field) {
                 $rules[$field] = [
-                    'required', 'numeric', 'min:0',
+                    'sometimes', 'required', 'numeric', 'min:0',
                     'max:10000000000', 'decimal:0,2',
                 ];
             }
@@ -293,6 +293,8 @@ class AipController extends Controller
                     'reference' => $ppa->reference,
                     'title' => $ppa->title,
                     'status' => $ppa->status,
+                    'description' => $ppa->description,
+                    'item_count' => (int) ($procurement->get($ppa->id)->item_count ?? 0),
                     'total_cents' => OfficeBudgetService::ppaTotal($ppa, $procurement),
                     'can_prepare_ppmp' => $canWrite && $ppa->permitsProcurementDrafts(),
                     'can_edit' => $canWrite
@@ -334,13 +336,30 @@ class AipController extends Controller
             'workflow' => '',
         ];
 
-        $costs = $editing?->type === 'aip' ? $procurement->get($editing->id) : null;
-        foreach (['ps' => $editing?->ps_cents, 'fe' => $editing?->fe_cents, 'mooe' => $costs->mooe ?? 0, 'co' => $costs->co ?? 0] as $field => $cents) {
-            $initial[$field] = bcdiv((string) ($cents ?? 0), '100', 2);
+        if ($editing?->type === 'aip') {
+            $costs = $procurement->get($editing->id);
+            foreach (['ps' => $editing->ps_cents, 'fe' => $editing->fe_cents, 'mooe' => $costs->mooe ?? 0, 'co' => $costs->co ?? 0] as $field => $cents) {
+                $initial[$field] = bcdiv((string) $cents, '100', 2);
+            }
         }
         $budget = OfficeBudgetService::summary($document->office_id, $year);
 
+        $activities = $document->ppas()->where('office_id', $document->office_id)->where('fiscal_year', $year);
+        $history = $document->exists
+            ? DB::table('audit_events as event')
+                ->join('plans as ppa', 'ppa.id', '=', 'event.subject_id')
+                ->leftJoin('users as actor', 'actor.id', '=', 'event.user_id')
+                ->where('event.subject_type', 'plan')->where('event.office_id', $document->office_id)
+                ->where('ppa.type', 'aip')->where('ppa.aip_document_id', $document->id)
+                ->where('ppa.office_id', $document->office_id)->where('ppa.fiscal_year', $year)
+                ->whereIn('event.action', ['submit', 'approve', 'return'])
+                ->orderByDesc('event.id')->limit(50)
+                ->get(['event.id', 'event.created_at', 'event.action', 'event.comment', 'ppa.reference', 'actor.name as actor'])
+            : [];
+
         return Inertia::render('ppas', [
+            'ppaCount' => $document->exists ? $activities->count() : 0,
+            'approvalHistory' => $history,
             'document' => $document,
             'year' => $year,
             'canWrite' => $canWrite,

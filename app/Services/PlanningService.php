@@ -119,16 +119,16 @@ class PlanningService
                 $budget = OfficeBudgetService::summary($officeId, $year, $existing?->id);
                 OfficeBudgetService::requireAvailable($budget, array_sum($amounts));
             } else {
-                $amounts['ps_cents'] = self::cents($data['ps'] ?? 0);
-                $amounts['fe_cents'] = self::cents($data['fe'] ?? 0);
+                $amounts['ps_cents'] = isset($data['ps']) ? self::cents($data['ps']) : ($existing?->ps_cents ?? 0);
+                $amounts['fe_cents'] = isset($data['fe']) ? self::cents($data['fe']) : ($existing?->fe_cents ?? 0);
                 if ($amounts['ps_cents'] < 0 || $amounts['fe_cents'] < 0) {
                     self::fail('PS and FE amounts must be zero or greater.');
                 }
-                $budget = OfficeBudgetService::summary($officeId, $year);
-                OfficeBudgetService::requireAvailable(
-                    $budget, $amounts['ps_cents'] + $amounts['fe_cents'],
-                    ($existing?->ps_cents ?? 0) + ($existing?->fe_cents ?? 0)
-                );
+                $manual = $amounts['ps_cents'] + $amounts['fe_cents'];
+                $previousManual = ($existing?->ps_cents ?? 0) + ($existing?->fe_cents ?? 0);
+                if ($manual > $previousManual) {
+                    OfficeBudgetService::requireAvailable(OfficeBudgetService::summary($officeId, $year), $manual, $previousManual);
+                }
                 if ($existing) {
                     $costs = OfficeBudgetService::procurementByPpa($officeId, $year, $existing->id)->get($existing->id);
                     $amounts['mooe_cents'] = (int) ($costs->mooe ?? 0);

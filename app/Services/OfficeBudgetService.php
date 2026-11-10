@@ -42,7 +42,7 @@ class OfficeBudgetService
     {
         return self::itemLines($officeId, $year)
             ->when($ppaId !== null, fn ($q) => $q->where('sheet.parent_id', $ppaId))
-            ->select('sheet.parent_id')
+            ->select('sheet.parent_id')->selectRaw('COUNT(*) as item_count')
             ->selectRaw('SUM(CASE WHEN item.expense_class = ? THEN item.total_cents ELSE 0 END) as mooe', ['MOOE'])
             ->selectRaw('SUM(CASE WHEN item.expense_class = ? THEN item.total_cents ELSE 0 END) as co', ['CO'])
             ->groupBy('sheet.parent_id')->get()->keyBy('parent_id');

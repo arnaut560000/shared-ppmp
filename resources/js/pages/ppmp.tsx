@@ -38,18 +38,16 @@ function Editor(p: Workspace) {
     }, [form.isDirty, p.canEdit]);
     const items = new Map<number, Item>(p.catalogue.map((i) => [i.id, i]));
     for (const saved of p.selected?.items ?? []) items.set(saved.catalogue_item_id, { ...saved, id: saved.catalogue_item_id });
-    const used = { MOOE: 0, CO: 0 };
-    for (const line of form.data.items) {
-        const item = items.get(line.catalogue_item_id);
-        if (item) used[item.expense_class] += sum(line.monthly_quantities) * line.expected_price_cents;
-    }
+    const listCost = form.data.items.reduce((total, line) => total + sum(line.monthly_quantities) * line.expected_price_cents, 0);
+    const remaining = p.available_for_sheet_cents === null ? null : p.available_for_sheet_cents - listCost;
     const editable = p.canEdit && !form.processing;
+    const canSave = editable && form.data.items.length > 0 && remaining !== null && remaining >= 0;
     return (
         <form
             className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5"
             onSubmit={(event) => {
                 event.preventDefault();
-                if (!editable) return;
+                if (!canSave) return;
                 const url = '/aips/' + p.ppa.id + '/ppmp';
                 if (p.selected) form.put(url + '/' + p.selected.id, { preserveScroll: true });
                 else form.post(url, { preserveScroll: true });
@@ -73,14 +71,14 @@ function Editor(p: Workspace) {
                 editable={editable}
                 onChange={(lines) => form.setData('items', lines)}
             />
-            <AllocationSummary available={p.available} used={used} />
+            <AllocationSummary budget={p.budget} listCost={listCost} remaining={remaining} />
             {Object.entries(form.errors).map(([key, error]) => (
                 <p key={key} role="alert" className="text-sm text-red-700">
                     {error}
                 </p>
             ))}
             {p.canEdit && (
-                <button className={button} disabled={!editable || !form.data.items.length}>
+                <button className={button} disabled={!canSave}>
                     {form.processing ? 'Saving…' : 'Save monthly draft'}
                 </button>
             )}

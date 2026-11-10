@@ -79,7 +79,7 @@ The focused tests cover service permissions, office budget reservations, stale v
 
 1. Admin or Budget Office opens **Office budget allocations** and assigns an amount per department and fiscal year.
 2. Department users open their own annual AIP automatically. **Add program heading** creates a reference and title, with no budget entry.
-3. Use **+ Add PPA** under a heading to enter an activity, schedule, outputs and funding. PS and FE are entered manually. The system calculates MOOE and CO from saved PPMP items.
+3. Add an activity under its heading with its schedule, outputs and funding source. The creation form has no budget fields and can be saved before the office ceiling is assigned. Saving PPMP items records procurement spending. PS and FE can be recorded separately when editing an activity.
 4. The office shares one ceiling across its PPAs for the fiscal year. Its remaining balance is the ceiling minus saved PPMP line costs and manual PPA PS and FE. Draft costs count. Editing a saved list replaces its previous cost.
 5. Only Budget Office and Admin can change ceilings. A ceiling must cover current spending.
 6. Choose **+ Add PPMP** on a PPA to start a new monthly list. Choose **Open PPMP** to revisit its lists. Office users and administrators can prepare lists for draft, returned or approved PPAs. Older quarterly-only lists open read-only.

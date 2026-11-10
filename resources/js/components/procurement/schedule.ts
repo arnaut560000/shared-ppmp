@@ -30,7 +30,8 @@ export type Workspace = {
     reference: string;
     selected: { id: number; reference: string; status: string; version: number; items: SavedItem[] } | null;
     catalogue: Item[];
-    available: Record<Expense, number>;
+    budget: { ceiling_cents: number | null; spent_cents: number; remaining_cents: number | null };
+    available_for_sheet_cents: number | null;
     canPrepare: boolean;
     canEdit: boolean;
     legacy: boolean;

@@ -5,6 +5,7 @@ use App\Http\Controllers\AipController;
 use App\Http\Controllers\AipDocumentController;
 use App\Http\Controllers\AipSummaryController;
 use App\Http\Controllers\OfficeBudgetController;
+use App\Http\Controllers\PlanningDeletionController;
 use App\Http\Controllers\PpmpController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -14,6 +15,10 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
+    Route::prefix('aips/deletion/{kind}/{id}')->where(['kind' => 'aip|ppa|sub-ppa', 'id' => '[0-9]+'])->group(function () {
+        Route::get('/', [PlanningDeletionController::class, 'preview'])->name('aips.deletion.preview');
+        Route::delete('/', [PlanningDeletionController::class, 'destroy'])->name('aips.deletion.destroy');
+    });
     Route::put('aips/documents/{document}', [AipDocumentController::class, 'update'])->name('aips.documents.update');
     Route::get('aips/documents/{document}/summary', AipSummaryController::class)->name('aips.documents.summary');
     Route::get('aips/{ppa}/ppmp', [PpmpController::class, 'show'])->name('ppmp.show');
