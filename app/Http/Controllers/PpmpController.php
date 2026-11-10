@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SavePpmpRequest;
 use App\Models\CatalogueItem;
 use App\Models\Plan;
+use App\Services\OfficeBudgetService;
 use App\Services\PlanningAccess;
 use App\Services\PlanningService;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,9 @@ class PpmpController extends Controller
         $sheet = $sheetId ? (clone $query)->with('items')->whereKey($sheetId)->firstOrFail() : null;
         $legacy = $sheet && $sheet->items->contains(fn ($item) => count($item->monthly_quantities ?? []) !== 12);
         $canPrepare = in_array($user->role, ['office', 'admin'], true) && $ppa->permitsProcurementDrafts();
-        $other = (clone $query)->when($sheet, fn ($q) => $q->whereKeyNot($sheet->id));
+        $budget = OfficeBudgetService::summary($ppa->office_id, $ppa->fiscal_year);
+        $available = $budget['remaining_cents'] === null ? null
+            : $budget['remaining_cents'] + (int) ($sheet?->items->sum('total_cents') ?? 0);
 
         $number = $sheets->count() + 1;
         do {
@@ -43,10 +46,10 @@ class PpmpController extends Controller
             'sheets' => $sheets,
             'selected' => $sheet ? [...$sheet->only(['id', 'reference', 'version', 'status']), 'items' => $sheet->items] : null,
             'reference' => $sheet?->reference ?? $reference,
-            'available' => [
-                'MOOE' => $ppa->mooe_cents - (int) (clone $other)->sum('mooe_cents'),
-                'CO' => $ppa->co_cents - (int) (clone $other)->sum('co_cents'),
-            ],
+            'budget' => $budget,
+            'available_for_sheet_cents' => $available,
+            // Older clients render two columns. Both draw on the same office balance.
+            'available' => ['MOOE' => $available ?? 0, 'CO' => $available ?? 0],
             'catalogue' => CatalogueItem::where('active', true)->whereIn('expense_class', ['MOOE', 'CO'])
                 ->orderBy('name')->get(['id', 'code', 'name', 'specification', 'unit', 'category', 'expense_class', 'price_cents']),
             'canPrepare' => $canPrepare,
