@@ -12,6 +12,7 @@ type Ppa = {
     status: string;
     total_cents: number;
     can_edit: boolean;
+    can_prepare_ppmp: boolean;
 };
 
 type Program = {
@@ -638,6 +639,14 @@ export default function Ppas(props: Props) {
                                                     <td className="p-3 capitalize">{ppa.status}</td>
                                                     <td className="p-3">{money(ppa.total_cents)}</td>
                                                     <td className="space-x-4 p-3">
+                                                        {ppa.can_prepare_ppmp && (
+                                                            <Link
+                                                                href={`/aips/${ppa.id}/ppmp?new=1`}
+                                                                className="inline-flex items-center rounded-md bg-green-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-800"
+                                                            >
+                                                                + Add PPMP
+                                                            </Link>
+                                                        )}
                                                         <Link href={`/aips/${ppa.id}/ppmp`} className="font-semibold text-blue-700 underline">
                                                             Open PPMP
                                                         </Link>
