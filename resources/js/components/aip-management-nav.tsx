@@ -14,7 +14,7 @@ type PlanningProps = SharedData & {
 
 export default function AipManagementNav() {
     const { component, props, url } = usePage<PlanningProps>();
-    const isPlanning = ['aips', 'ppas', 'ppmp', 'aip-summary'].includes(component);
+    const isPlanning = ['aips', 'ppas', 'ppmp', 'my-ppmps', 'aip-summary'].includes(component);
     const [expanded, setExpanded] = useState(isPlanning);
     const { state, setOpen, isMobile, setOpenMobile } = useSidebar();
     const submenuId = useId();
@@ -22,17 +22,30 @@ export default function AipManagementNav() {
     const year = props.year ?? (component === 'ppmp' ? props.ppa?.fiscal_year : undefined);
     const index = planningLink('/aips', 'info', year);
     const workspace = component === 'ppas' || component === 'aip-summary' ? props.listUrl : component === 'ppmp' ? props.backUrl : undefined;
+    const myPpmpsActive = isOffice && (component === 'my-ppmps' || component === 'ppmp');
     const listActive =
-        isPlanning && (planningSection(url) === 'ppas' || component === 'ppmp' || (component === 'ppas' && props.editorVisible === true));
+        isPlanning &&
+        !myPpmpsActive &&
+        (planningSection(url) === 'ppas' || component === 'ppmp' || (component === 'ppas' && props.editorVisible === true));
+
     const links = [
         {
             label: isOffice ? 'My AIP' : 'Department AIPs',
             href: isOffice && workspace ? planningLink(workspace, 'info', year) : index,
-            active: isPlanning && !listActive && (isOffice || component === 'aips'),
+            active: isPlanning && !listActive && !myPpmpsActive && (isOffice || component === 'aips'),
         },
     ];
+
     if (!isOffice || props.auth.user.office_id) {
         links.push({ label: 'PPA List', href: planningLink(workspace ?? '/aips', 'ppas', year), active: listActive });
+    }
+
+    if (isOffice && props.auth.user.office_id) {
+        links.push({
+            label: 'My PPMPs',
+            href: year ? `/my-ppmps?year=${year}` : '/my-ppmps',
+            active: myPpmpsActive,
+        });
     }
 
     const rail = !isMobile && state === 'collapsed';

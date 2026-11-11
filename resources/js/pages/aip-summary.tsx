@@ -38,7 +38,7 @@ export default function Summary({ document, programs, ceiling }: Props) {
                 <header>
                     <h1 className="text-2xl font-bold text-blue-950">AIP summary</h1>
                     <p className="mt-1 text-sm text-slate-600">
-                        {document.office.name} · FY {document.fiscal_year} · {activities.length} PPAs
+                        {document.office.name} · FY {document.fiscal_year} · {programs.length} PPAs · {activities.length} Sub PPAs
                     </p>
                 </header>
                 <PlanningStages workspace={back} summary={back + '/summary'} current="review" />
@@ -49,7 +49,7 @@ export default function Summary({ document, programs, ceiling }: Props) {
                 <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
                         ['Office budget', ceiling],
-                        ['PPA allocations', allocated],
+                        ['Sub PPA allocations', allocated],
                         ['Remaining office budget', ceiling === null ? null : ceiling - allocated],
                         ['PPMP estimated cost', procurement],
                     ].map(([label, value]) => (
@@ -59,19 +59,19 @@ export default function Summary({ document, programs, ceiling }: Props) {
                         </div>
                     ))}
                 </dl>
-                {programs.length === 0 && <p>No program headings for this year.</p>}
+                {programs.length === 0 && <p>No PPAs for this year.</p>}
                 {programs.map((p) => (
                     <section key={p.id} className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                         <h2 className="bg-blue-50 p-3 font-semibold">
                             {p.reference} · {p.title}
                         </h2>
                         {!p.ppas.length ? (
-                            <p className="p-3">No PPAs under this heading.</p>
+                            <p className="p-3">No Sub PPAs under this PPA.</p>
                         ) : (
                             <table className="w-full text-left text-sm">
                                 <thead>
                                     <tr>
-                                        {['PPA', 'Output / indicator / target', 'Allocation', 'Item lines', 'Procurement cost', 'Status'].map((h) => (
+                                        {['Sub PPA', 'Output / indicator / target', 'Allocation', 'Item lines', 'Procurement cost', 'Status'].map((h) => (
                                             <th key={h} className="p-2">
                                                 {h}
                                             </th>

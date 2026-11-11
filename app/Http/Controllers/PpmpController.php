@@ -15,6 +15,43 @@ use Inertia\Response;
 
 class PpmpController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $user = $request->user();
+        PlanningAccess::roles($user, ['office']);
+        abort_unless($user->office_id, 403, 'Your account needs an assigned office.');
+
+        $data = $request->validate(['year' => ['nullable', 'integer', 'between:2020,2100']]);
+        $year = (int) ($data['year'] ?? now()->year);
+
+        $sheets = Plan::query()
+            ->join('plans as activity', 'activity.id', '=', 'plans.parent_id')
+            ->join('plans as heading', 'heading.id', '=', 'activity.parent_ppa_id')
+            ->where('plans.type', 'ppmp')
+            ->where('activity.type', 'aip')
+            ->where('heading.type', 'program')
+            ->where('plans.office_id', $user->office_id)
+            ->where('plans.fiscal_year', $year)
+            ->whereColumn('activity.office_id', 'plans.office_id')
+            ->whereColumn('activity.fiscal_year', 'plans.fiscal_year')
+            ->whereColumn('heading.office_id', 'plans.office_id')
+            ->whereColumn('heading.fiscal_year', 'plans.fiscal_year')
+            ->orderBy('heading.reference')
+            ->orderBy('activity.reference')
+            ->orderBy('plans.reference')
+            ->orderBy('plans.id')
+            ->paginate(20, [
+                'plans.id', 'plans.reference', 'plans.status', 'plans.total_cents',
+                'activity.id as activity_id', 'activity.title as activity_title', 'heading.title as heading_title',
+            ])->appends(['year' => $year]);
+
+        return Inertia::render('my-ppmps', [
+            'office' => $user->office->name,
+            'year' => $year,
+            'sheets' => $sheets,
+        ]);
+    }
+
     public function show(Request $request, Plan $ppa): Response
     {
         $user = $request->user();
@@ -32,11 +69,16 @@ class PpmpController extends Controller
         $budget = OfficeBudgetService::summary($ppa->office_id, $ppa->fiscal_year);
         $available = $budget['remaining_cents'] === null ? null
             : $budget['remaining_cents'] + (int) ($sheet?->items->sum('total_cents') ?? 0);
-
-        $number = $sheets->count() + 1;
-        do {
-            $reference = sprintf('PPMP-%d-%03d', $ppa->id, $number++);
-        } while ($sheets->contains('reference', $reference));
+        $reference = $sheet?->reference;
+        if ($reference === null) {
+            $officeSheets = Plan::where('type', 'ppmp')
+                ->where('office_id', $ppa->office_id)
+                ->where('fiscal_year', $ppa->fiscal_year);
+            $number = $sheets->count() + 1;
+            do {
+                $reference = sprintf('PPMP-%d-%03d', $ppa->id, $number++);
+            } while ((clone $officeSheets)->where('reference', $reference)->exists());
+        }
 
         return Inertia::render('ppmp', [
             'ppa' => $ppa->only(['id', 'reference', 'title', 'fiscal_year', 'fund_source', 'status']),
@@ -45,7 +87,7 @@ class PpmpController extends Controller
             'backUrl' => route('aips.documents.show', $ppa->aip_document_id),
             'sheets' => $sheets,
             'selected' => $sheet ? [...$sheet->only(['id', 'reference', 'version', 'status']), 'items' => $sheet->items] : null,
-            'reference' => $sheet?->reference ?? $reference,
+            'reference' => $reference,
             'budget' => $budget,
             'available_for_sheet_cents' => $available,
             // Older clients render two columns. Both draw on the same office balance.

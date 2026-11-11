@@ -108,16 +108,19 @@ class PlanningService
                 if ($duplicate) {
                     throw ValidationException::withMessages(['reference' => 'This PPMP reference is already in use.']);
                 }
-                $lines = ProcurementSchedule::lines($data['items'] ?? [], $existing);
+                $clearing = $existing !== null && ($data['items'] ?? null) === [];
+                $lines = $clearing ? [] : ProcurementSchedule::lines($data['items'] ?? [], $existing);
                 foreach ($lines as $line) {
                     $amounts[strtolower($line['expense_class']).'_cents'] += $line['total_cents'];
                 }
-                if (array_sum($amounts) <= 0) {
+                if (! $clearing && array_sum($amounts) <= 0) {
                     self::fail('The procurement total must be greater than zero.');
                 }
 
-                $budget = OfficeBudgetService::summary($officeId, $year, $existing?->id);
-                OfficeBudgetService::requireAvailable($budget, array_sum($amounts));
+                if (! $clearing) {
+                    $budget = OfficeBudgetService::summary($officeId, $year, $existing?->id);
+                    OfficeBudgetService::requireAvailable($budget, array_sum($amounts));
+                }
             } else {
                 $amounts['ps_cents'] = isset($data['ps']) ? self::cents($data['ps']) : ($existing?->ps_cents ?? 0);
                 $amounts['fe_cents'] = isset($data['fe']) ? self::cents($data['fe']) : ($existing?->fe_cents ?? 0);
@@ -198,10 +201,12 @@ class PlanningService
                 $plan->items()->createMany($lines);
                 // Keep the existing PPA amount columns in sync for callers reading the saved plan.
                 $costs = OfficeBudgetService::procurementByPpa($officeId, $year, $parent->id)->get($parent->id);
+                $mooe = (int) ($costs->mooe ?? 0);
+                $co = (int) ($costs->co ?? 0);
                 $parent->update([
-                    'mooe_cents' => (int) $costs->mooe,
-                    'co_cents' => (int) $costs->co,
-                    'total_cents' => $parent->ps_cents + $parent->fe_cents + $costs->mooe + $costs->co,
+                    'mooe_cents' => $mooe,
+                    'co_cents' => $co,
+                    'total_cents' => $parent->ps_cents + $parent->fe_cents + $mooe + $co,
                 ]);
             }
 
@@ -271,6 +276,9 @@ class PlanningService
                 }
 
                 if ($plan->type === 'ppmp') {
+                    if (! $plan->items()->exists()) {
+                        self::fail('Add at least one item before submitting this PPMP.');
+                    }
                     $parent = Plan::whereKey($plan->parent_id)->lockForUpdate()->first();
                     if (! $parent || $parent->type !== 'aip' || $parent->parent_ppa_id === null
                         || $parent->office_id !== $plan->office_id || $parent->fiscal_year !== $plan->fiscal_year) {

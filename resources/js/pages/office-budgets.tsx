@@ -90,7 +90,7 @@ export default function OfficeBudgets({ year, offices, message }: Props) {
                         className="space-y-4 rounded-xl border border-t-4 border-t-blue-600 p-5"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            form.post('/budgets', { preserveState: false });
+                            form.post('/budgets', { preserveState: 'errors', preserveScroll: true });
                         }}
                     >
                         <h2 className="font-semibold">Set office budget — {year}</h2>

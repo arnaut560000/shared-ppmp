@@ -397,6 +397,6 @@ class AipController extends Controller
             $parameters['page'] = intdiv($before, 15) + 1;
         }
 
-        return to_route('aips.documents.show', $parameters)->with('success', $plan->type === 'program' ? 'Program heading saved.' : 'PPA saved.');
+        return to_route('aips.documents.show', $parameters)->with('success', $plan->type === 'program' ? 'PPA saved.' : 'Sub PPA saved.');
     }
 }

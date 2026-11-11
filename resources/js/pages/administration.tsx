@@ -1,7 +1,7 @@
 import InputError from '@/components/input-error';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 type Office = {
@@ -47,6 +47,8 @@ function UserAccessForm({
     const form = useForm({
         role: account.role,
         office_id: account.office_id === null ? '' : String(account.office_id),
+        expected_role: account.role,
+        expected_office_id: account.office_id,
     });
 
     return (
@@ -135,6 +137,7 @@ export default function Administration({
     roles,
     message,
 }: Props) {
+    const accessConflict = usePage().props.errors.access_conflict;
     const officeForm = useForm({
         code: '',
         name: '',
@@ -271,6 +274,7 @@ export default function Administration({
                             </select>
                         </div>
 
+                        {accessConflict && <p role="alert" className="mt-3 text-sm text-red-700">{accessConflict}</p>}
                         {selectedUser && (
                             <UserAccessForm
                                 key={`${selectedUser.id}-${selectedUser.role}-${selectedUser.office_id}`}

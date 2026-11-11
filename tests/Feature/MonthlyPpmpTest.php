@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\CatalogueItem;
+use App\Models\Office;
 use App\Models\Plan;
+use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\PpaTestCase;
 
@@ -30,6 +32,28 @@ class MonthlyPpmpTest extends PpaTestCase
     {
         return ['reference' => 'PL-001', 'items' => [['catalogue_item_id' => $this->paper->id, 'expected_price_cents' => 25000,
             'monthly_quantities' => [2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]]];
+    }
+
+    public function test_my_ppmps_lists_saved_sheets_by_office_and_year(): void
+    {
+        $this->post($this->url(), $this->schedulePayload())->assertSessionHasNoErrors();
+        $sheet = $this->ppa->procurementLists()->sole();
+        $colleague = User::factory()->create(['role' => 'office', 'office_id' => $this->planner->office_id]);
+
+        $this->actingAs($colleague)->get('/my-ppmps?year=2027')->assertInertia(fn (Assert $page) => $page
+            ->component('my-ppmps')->where('office', 'ICT Office')->where('year', 2027)
+            ->where('sheets.total', 1)->where('sheets.data.0.id', $sheet->id)
+            ->where('sheets.data.0.reference', 'PL-001')->where('sheets.data.0.status', 'draft')
+            ->where('sheets.data.0.total_cents', 150000)->where('sheets.data.0.activity_id', $this->ppa->id)
+            ->where('sheets.data.0.activity_title', $this->ppa->title)->where('sheets.data.0.heading_title', $this->main->title));
+        $this->get($this->url().'?sheet='.$sheet->id)->assertInertia(fn (Assert $page) => $page->where('selected.id', $sheet->id));
+        $this->get('/my-ppmps?year=2026')->assertInertia(fn (Assert $page) => $page->where('sheets.total', 0));
+
+        $otherOffice = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
+        $otherUser = User::factory()->create(['role' => 'office', 'office_id' => $otherOffice->id]);
+        $this->actingAs($otherUser)->get('/my-ppmps?year=2027&office_id='.$this->planner->office_id)
+            ->assertInertia(fn (Assert $page) => $page->where('office', 'Engineering')->where('sheets.total', 0));
+        $this->actingAs(User::factory()->create(['role' => 'office', 'office_id' => null]))->get('/my-ppmps')->assertForbidden();
     }
 
     public function test_draft_months_roll_up_and_reopen_without_charging_office_twice(): void

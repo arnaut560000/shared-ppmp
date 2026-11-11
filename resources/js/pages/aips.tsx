@@ -131,10 +131,10 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                                             Department / annual plan
                                         </th>
                                         <th scope="col" className="px-5 py-3">
-                                            PPAs
+                                            Sub PPAs
                                         </th>
                                         <th scope="col" className="px-5 py-3 text-right">
-                                            Total PPA allocation
+                                            Total Sub PPA allocation
                                         </th>
                                         <th scope="col" className="px-5 py-3">
                                             Action

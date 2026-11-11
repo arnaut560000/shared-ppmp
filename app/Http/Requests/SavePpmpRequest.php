@@ -28,7 +28,9 @@ class SavePpmpRequest extends FormRequest
         return [
             'reference' => ['required', 'string', 'max:100'],
             'version' => [$this->route('ppmp') ? 'required' : 'nullable', 'integer', 'min:0'],
-            'items' => ['required', 'array', 'list', 'min:1'],
+            'items' => $this->route('ppmp')
+                ? ['present', 'array', 'list']
+                : ['required', 'array', 'list', 'min:1'],
             'items.*.catalogue_item_id' => ['required', 'integer', 'distinct', 'exists:catalogue_items,id'],
             'items.*.expected_price_cents' => ['required', 'integer', 'min:0'],
             'items.*.monthly_quantities' => ['required', 'array', 'list', 'size:12'],

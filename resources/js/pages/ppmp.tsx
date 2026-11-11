@@ -41,7 +41,7 @@ function Editor(p: Workspace) {
     const listCost = form.data.items.reduce((total, line) => total + sum(line.monthly_quantities) * line.expected_price_cents, 0);
     const remaining = p.available_for_sheet_cents === null ? null : p.available_for_sheet_cents - listCost;
     const editable = p.canEdit && !form.processing;
-    const canSave = editable && form.data.items.length > 0 && remaining !== null && remaining >= 0;
+    const canSave = editable && (form.data.items.length === 0 ? p.selected !== null : remaining !== null && remaining >= 0);
     return (
         <form
             className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5"
@@ -103,7 +103,7 @@ export default function Ppmp(p: Workspace) {
                         {p.ppa.reference} — {p.ppa.title}
                     </p>
                     <p>
-                        {p.office} · FY {p.ppa.fiscal_year} · {p.ppa.fund_source} · PPA {p.ppa.status}
+                        {p.office} · FY {p.ppa.fiscal_year} · {p.ppa.fund_source} · Sub PPA {p.ppa.status}
                     </p>
                 </header>
                 <PlanningStages workspace={p.backUrl} summary={p.summaryUrl} current="ppas" />
@@ -147,7 +147,7 @@ export default function Ppmp(p: Workspace) {
                 ) : p.selected || p.canEdit ? (
                     <Editor key={[p.ppa.id, p.selected?.id ?? 'new', p.selected?.version ?? 0].join('-')} {...p} />
                 ) : (
-                    <p>No list is available to open for this PPA.</p>
+                    <p>No list is available to open for this Sub PPA.</p>
                 )}
             </div>
         </AppLayout>

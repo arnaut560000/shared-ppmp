@@ -189,7 +189,7 @@ function SavedProcurement({ lists, ppaId }: { lists: ProcurementList[]; ppaId: n
                     Open monthly PPMP
                 </Link>
             </header>
-            {lists.length === 0 && <p className="p-4 text-sm text-slate-600">No saved procurement lists for this PPA.</p>}
+            {lists.length === 0 && <p className="p-4 text-sm text-slate-600">No saved procurement lists for this Sub PPA.</p>}
             {lists.map((list) => (
                 <details key={list.id} open={lists.length === 1} className="border-b last:border-0">
                     <summary className="cursor-pointer p-4 text-sm font-semibold">
@@ -245,7 +245,7 @@ function Editor({
 
     const original = amountFields.reduce((sum, [key]) => sum + Math.round((Number(initial[key]) || 0) * 100), 0);
     const remainingAfterSave = budget.remaining_cents === null ? null : budget.remaining_cents + (editingId ? original : 0) - total;
-    const title = (readOnly ? 'View ' : editingId ? 'Edit ' : 'Add ') + (isProgram ? 'program heading' : 'PPA');
+    const title = (readOnly ? 'View ' : editingId ? 'Edit ' : 'Add ') + (isProgram ? 'PPA' : 'Sub PPA');
     const fields = (names: [string, string][], required: string[] = []) =>
         names.map(([key, label]) => (
             <label key={key} className="block text-sm font-medium">
@@ -277,7 +277,7 @@ function Editor({
                 <fieldset disabled={readOnly || form.processing} className="grid gap-3">
                     {!isProgram && (
                         <div>
-                            <span className="text-sm font-medium">Parent program</span>
+                            <span className="text-sm font-medium">Parent PPA</span>
                             <p className="mt-1 rounded-md border bg-slate-50 px-3 py-2">
                                 {program?.reference} · {program?.title}
                             </p>
@@ -285,7 +285,7 @@ function Editor({
                     )}
                     {fields(
                         [
-                            ['title', isProgram ? 'Program title' : 'PPA title'],
+                            ['title', isProgram ? 'PPA title' : 'Sub PPA title'],
                             ['reference', 'Reference code'],
                         ],
                         ['title', 'reference'],
@@ -346,7 +346,7 @@ function Editor({
                                         );
                                     })}
                                     <p>
-                                        <strong>PPA total</strong>
+                                        <strong>Sub PPA total</strong>
                                         <br />
                                         {money(total)}
                                     </p>
@@ -489,8 +489,8 @@ function Workspace(props: Props) {
                             {(
                                 [
                                     ['Total AIP amount', money(budget.spent_cents), Coins, 'border-blue-200 bg-blue-50 text-blue-900'],
-                                    ['Programs', plans.total, CheckCircle2, 'border-emerald-200 bg-emerald-50 text-emerald-900'],
-                                    ['Total PPAs', props.ppaCount, Puzzle, 'border-violet-200 bg-violet-50 text-violet-900'],
+                                    ['Total PPAs', plans.total, CheckCircle2, 'border-emerald-200 bg-emerald-50 text-emerald-900'],
+                                    ['Total Sub PPAs', props.ppaCount, Puzzle, 'border-violet-200 bg-violet-50 text-violet-900'],
                                 ] as const
                             ).map(([label, value, Icon, tint]) => (
                                 <div key={label} className={'flex min-w-0 items-center gap-2 rounded-lg border p-2.5 sm:px-4 ' + tint}>
@@ -585,7 +585,7 @@ function Workspace(props: Props) {
                                                             <span className="mt-1 block text-xs">
                                                                 {money(program.total_cents)}{' '}
                                                                 <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-blue-800">
-                                                                    {program.children.length} PPAs
+                                                                    {program.children.length} {program.children.length === 1 ? 'Sub PPA' : 'Sub PPAs'}
                                                                 </span>
                                                             </span>
                                                         </span>
@@ -604,7 +604,7 @@ function Workspace(props: Props) {
                                                 {open && (
                                                     <div className="my-2 ml-6 space-y-2 border-l border-blue-200 pr-3 pl-3 sm:ml-9">
                                                         {program.children.length === 0 && (
-                                                            <p className="py-2 text-xs text-slate-500">No PPAs under this program.</p>
+                                                            <p className="py-2 text-xs text-slate-500">No Sub PPAs under this PPA.</p>
                                                         )}
                                                         {program.children.map((ppa) => (
                                                             <button
@@ -635,7 +635,7 @@ function Workspace(props: Props) {
                                     })}
                                 </div>
                                 {plans.last_page > 1 && (
-                                    <nav aria-label="Program pages" className="flex items-center gap-3 border-t p-3 text-xs">
+                                    <nav aria-label="PPA pages" className="flex items-center gap-3 border-t p-3 text-xs">
                                         <span>
                                             Page {plans.current_page} of {plans.last_page}
                                         </span>
@@ -676,13 +676,13 @@ function Workspace(props: Props) {
                                         <Detail label="Fiscal year">{year}</Detail>
                                         <Detail label="Office">{document.office.name}</Detail>
                                         {activity ? (
-                                            <Detail label="PPA status">
+                                            <Detail label="Sub PPA status">
                                                 <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-900 capitalize">
                                                     {activity.status}
                                                 </span>
                                             </Detail>
                                         ) : (
-                                            <Detail label={group ? 'PPAs in program' : 'Office budget'}>
+                                            <Detail label={group ? 'Sub PPAs in this PPA' : 'Office budget'}>
                                                 {group
                                                     ? group.children.length
                                                     : budget.ceiling_cents === null
@@ -690,7 +690,7 @@ function Workspace(props: Props) {
                                                       : money(budget.ceiling_cents)}
                                             </Detail>
                                         )}
-                                        <Detail label={activity ? 'PPA amount' : group ? 'Program amount' : 'Office balance'}>
+                                        <Detail label={activity ? 'Sub PPA amount' : group ? 'PPA amount' : 'Office balance'}>
                                             {group
                                                 ? money(activity?.total_cents ?? group.total_cents)
                                                 : budget.remaining_cents === null
@@ -765,11 +765,11 @@ function Workspace(props: Props) {
                     {tab === 'history' && (
                         <section className={panel}>
                             <header className={panelHead}>
-                                <h2 className="font-bold">PPA Approval History</h2>
+                                <h2 className="font-bold">Sub PPA Approval History</h2>
                             </header>
                             {props.approvalHistory.length ? (
                                 <div className="p-4">
-                                    <p className="mb-2 text-xs text-slate-500">Latest 50 PPA workflow events</p>
+                                    <p className="mb-2 text-xs text-slate-500">Latest 50 Sub PPA workflow events</p>
                                     <ol className="divide-y">
                                         {props.approvalHistory.map((event) => (
                                             <li key={event.id} className="space-y-1 py-3">
@@ -786,7 +786,7 @@ function Workspace(props: Props) {
                                     </ol>
                                 </div>
                             ) : (
-                                <p className="p-5 text-slate-600">No PPA submissions or approval decisions have been recorded for this AIP.</p>
+                                <p className="p-5 text-slate-600">No Sub PPA submissions or approval decisions have been recorded for this AIP.</p>
                             )}
                         </section>
                     )}

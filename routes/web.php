@@ -22,6 +22,7 @@ Route::middleware(['auth'])->group(function () {
     Route::put('aips/documents/{document}', [AipDocumentController::class, 'update'])->name('aips.documents.update');
     Route::get('aips/documents/{document}/summary', AipSummaryController::class)->name('aips.documents.summary');
     Route::get('aips/{ppa}/ppmp', [PpmpController::class, 'show'])->name('ppmp.show');
+    Route::get('my-ppmps', [PpmpController::class, 'index'])->name('ppmp.index');
     Route::post('aips/{ppa}/ppmp', [PpmpController::class, 'store'])->name('ppmp.store');
     Route::put('aips/{ppa}/ppmp/{ppmp}', [PpmpController::class, 'update'])->name('ppmp.update');
     Route::get('budgets', [OfficeBudgetController::class, 'index'])->name('budgets.index');

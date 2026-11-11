@@ -89,6 +89,8 @@ class AdministrationController extends Controller
 
         $data = $request->validate([
             'role' => ['required', Rule::in(array_keys(self::ROLES))],
+            'expected_role' => ['required', Rule::in(array_keys(self::ROLES))],
+            'expected_office_id' => ['present', 'nullable', 'integer'],
             'office_id' => [
                 'nullable',
                 'required_if:role,office',
@@ -105,9 +107,22 @@ class AdministrationController extends Controller
         }
 
         DB::transaction(function () use ($request, $user, $data) {
+            $adminIds = User::where('role', 'admin')->orderBy('id')
+                ->lockForUpdate()->pluck('id');
+            abort_unless($adminIds->contains($request->user()->id), 403);
+
             $account = User::query()
                 ->lockForUpdate()
                 ->findOrFail($user->id);
+
+            $expectedOffice = $data['expected_office_id'] === null ? null : (int) $data['expected_office_id'];
+            $currentOffice = $account->office_id === null ? null : (int) $account->office_id;
+
+            if ($account->role !== $data['expected_role'] || $currentOffice !== $expectedOffice) {
+                throw ValidationException::withMessages([
+                    'access_conflict' => 'This assignment changed in another session. Review the current role and office before saving again.',
+                ]);
+            }
 
             $before = [
                 'role' => $account->role,
@@ -134,7 +149,7 @@ class AdministrationController extends Controller
                     ],
                 ],
             );
-        });
+        }, 3);
 
         return to_route('administration.index')
             ->with('success', 'User role and office updated successfully.');
