@@ -250,7 +250,7 @@ class AipController extends Controller
 
         PlanningAccess::roles(
             $user,
-            ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory']
+            ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory', 'mpdc']
         );
 
         abort_if(
