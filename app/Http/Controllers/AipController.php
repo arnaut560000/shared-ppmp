@@ -104,6 +104,7 @@ class AipController extends Controller
     ): Plan {
         return DB::transaction(function () use ($request, $data, $existing) {
             Office::whereKey($data['office_id'])->lockForUpdate()->firstOrFail();
+            AipDocument::ensureWritable($data['office_id'], $data['fiscal_year']);
 
             if ($existing) {
                 $program = Plan::whereKey($existing->id)->lockForUpdate()->firstOrFail();
