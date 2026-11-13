@@ -19,7 +19,7 @@ class AipSummaryController extends Controller
     public function __invoke(Request $request, AipDocument $document): Response
     {
         $user = $request->user();
-        PlanningAccess::roles($user, ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory']);
+        PlanningAccess::roles($user, ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory', 'mpdc']);
         abort_if($user->role === 'office' && $user->office_id !== $document->office_id, 403);
         $document->load('office:id,name,code');
         abort_if($user->role === 'mpdc' && $document->review_status === 'draft', 403);
