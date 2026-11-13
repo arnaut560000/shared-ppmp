@@ -260,7 +260,11 @@ class AipController extends Controller
 
         $document->load('office:id,code,name');
         $year = $document->fiscal_year;
-        $canWrite = in_array($user->role, ['admin', 'office'], true);
+        abort_if($user->role === 'mpdc' && (! $document->exists || $document->review_status === 'draft'), 403);
+        $writer = in_array($user->role, ['admin', 'office'], true);
+        $canWrite = $writer && ! $document->isReviewLocked();
+        $canPrepare = $writer && ! in_array($document->review_status, ['submitted', 'reviewed'], true);
+        $readOnly = $readOnly || ! $canWrite;
         $program ??= $editing?->parentPpa;
 
         $workspaceUrl = $user->role === 'office'
@@ -297,7 +301,7 @@ class AipController extends Controller
                     'description' => $ppa->description,
                     'item_count' => (int) ($procurement->get($ppa->id)->item_count ?? 0),
                     'total_cents' => OfficeBudgetService::ppaTotal($ppa, $procurement),
-                    'can_prepare_ppmp' => $canWrite && $ppa->permitsProcurementDrafts(),
+                    'can_prepare_ppmp' => $canPrepare && $ppa->permitsProcurementDrafts(),
                     'can_edit' => $canWrite
                         && in_array($ppa->status, ['draft', 'returned'], true),
                 ])->values(),
