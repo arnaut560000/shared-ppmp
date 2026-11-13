@@ -11,6 +11,7 @@ type Document = {
     fiscal_year: number;
     office: Office;
     ppas_count: number;
+    review_status: string;
     ppas_sum_total_cents: number | string | null;
 };
 type Props = {
@@ -147,6 +148,9 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                                             <td className="px-5 py-4">
                                                 <p className="font-semibold">{document.office.name}</p>
                                                 <p className="text-muted-foreground">{document.title}</p>
+                                                <Link href={`/aips/documents/${document.id}/summary`} className="text-blue-700 underline">
+                                                    Review AIP <span className="capitalize">({document.review_status})</span>
+                                                </Link>
                                             </td>
                                             <td className="px-5 py-4">{document.ppas_count}</td>
                                             <td className="px-5 py-4 text-right whitespace-nowrap">
