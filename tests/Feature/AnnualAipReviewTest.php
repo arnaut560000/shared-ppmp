@@ -39,4 +39,13 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
         $this->assertSame('submitted', $this->document()->review_status);
     }
+
+    public function test_submission_requires_current_figures_and_locks_activities(): void
+    {
+        $this->decide($this->planner, 'submit')->assertSessionHasErrors('workflow');
+        $this->child();
+        $this->decide($this->planner, 'submit', ['summaryToken' => str_repeat('0', 64)])->assertSessionHasErrors('workflow');
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        $this->post('/aips', $this->childData(['reference' => 'EXTRA']))->assertSessionHasErrors('workflow');
+    }
 }
