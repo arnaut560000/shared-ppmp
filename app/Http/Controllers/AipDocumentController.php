@@ -18,7 +18,7 @@ class AipDocumentController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        PlanningAccess::roles($user, ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory']);
+        PlanningAccess::roles($user, ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory', 'mpdc']);
         $data = $request->validate(['year' => ['nullable', 'integer', 'between:2020,2100']]);
         $year = (int) ($data['year'] ?? now()->year);
 
@@ -33,6 +33,7 @@ class AipDocumentController extends Controller
                 ->when($user->role === 'office', fn ($q) => $q->whereKey($user->office_id ?? 0))
                 ->orderBy('name')->get(['id', 'code', 'name']),
             'documents' => AipDocument::query()->visibleTo($user)
+                ->when($user->role === 'mpdc', fn ($q) => $q->where('review_status', '!=', 'draft'))
                 ->where('fiscal_year', $year)->with('office:id,code,name')
                 ->withCount('ppas')
                 ->orderBy('office_id')->paginate(15)->withQueryString()
