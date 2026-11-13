@@ -74,4 +74,19 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->assertSame('pending', $this->document()->budget_review);
         $this->assertSame('pending', $this->document()->planning_review);
     }
+
+    public function test_mayor_can_attest_only_after_both_reviews_are_complete(): void
+    {
+        $this->child();
+        $planning = User::factory()->create(['role' => 'mpdc']);
+        $budget = User::factory()->create(['role' => 'budget']);
+        $mayor = User::factory()->create(['role' => 'mayor']);
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        $this->decide($planning, 'complete')->assertSessionHasNoErrors();
+        $this->decide($mayor, 'attest')->assertSessionHasErrors('workflow');
+        $this->decide($budget, 'complete')->assertSessionHasNoErrors();
+        $this->assertSame('reviewed', $this->document()->review_status);
+        $this->decide($mayor, 'attest')->assertSessionHasNoErrors();
+        $this->assertSame('attested', $this->document()->review_status);
+    }
 }
