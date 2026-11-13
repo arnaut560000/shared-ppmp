@@ -57,6 +57,9 @@ class AipDocumentController extends Controller
         ]);
         DB::transaction(function () use ($data, $document, $user) {
             $document = AipDocument::whereKey($document->id)->lockForUpdate()->firstOrFail();
+            if ($document->isReviewLocked()) {
+                PlanningService::fail('The annual AIP is locked for review.');
+            }
             if ((int) $document->revision !== (int) $data['revision']) {
                 PlanningService::fail('The AIP details changed. Reload before saving.');
             }
