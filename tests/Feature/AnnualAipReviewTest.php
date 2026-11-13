@@ -48,4 +48,17 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
         $this->post('/aips', $this->childData(['reference' => 'EXTRA']))->assertSessionHasErrors('workflow');
     }
+
+    public function test_mpdc_can_return_a_submitted_aip_with_feedback_on_an_activity(): void
+    {
+        $activity = $this->child();
+        $planning = User::factory()->create(['role' => 'mpdc']);
+        $this->actingAs($planning)->get('/aips/documents/'.$this->document()->id.'/summary')->assertForbidden();
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        $this->decide($planning, 'return')->assertSessionHasErrors('comment');
+        $this->decide($planning, 'return', ['comment' => 'Clarify the target.', 'activity_id' => $activity->id])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('returned', $this->document()->review_status);
+        $this->assertDatabaseHas('audit_events', ['subject_type' => 'aip_review', 'comment' => 'Clarify the target.']);
+    }
 }
