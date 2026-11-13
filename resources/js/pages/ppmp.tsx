@@ -1,7 +1,7 @@
-import PlanningStages from '@/components/planning-stages';
 import AllocationSummary from '@/components/procurement/allocation-summary';
+import PpmpReview from '@/components/procurement/ppmp-review';
 import ItemTable from '@/components/procurement/item-table';
-import { type Item, type Line, money, sum, type Workspace } from '@/components/procurement/schedule';
+import { type Item, type Line, money, sheetStatus, sum, type Workspace } from '@/components/procurement/schedule';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
@@ -43,6 +43,7 @@ function Editor(p: Workspace) {
     const editable = p.canEdit && !form.processing;
     const canSave = editable && (form.data.items.length === 0 ? p.selected !== null : remaining !== null && remaining >= 0);
     return (
+        <>
         <form
             className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5"
             onSubmit={(event) => {
@@ -83,6 +84,8 @@ function Editor(p: Workspace) {
                 </button>
             )}
         </form>
+        {p.selected && <PpmpReview workspace={p} sheet={p.selected} unsaved={form.isDirty || form.processing} />}
+        </>
     );
 }
 
@@ -98,7 +101,7 @@ export default function Ppmp(p: Workspace) {
             <Head title={'PPMP — ' + p.ppa.reference} />
             <div className="aip-workspace min-w-0 flex-1 space-y-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header>
-                    <h1 className="text-2xl font-bold">PPAs and PPMP</h1>
+                    <h1 className="text-2xl font-bold">Monthly PPMP</h1>
                     <p className="mt-2 font-semibold text-blue-950">
                         {p.ppa.reference} — {p.ppa.title}
                     </p>
@@ -106,7 +109,10 @@ export default function Ppmp(p: Workspace) {
                         {p.office} · FY {p.ppa.fiscal_year} · {p.ppa.fund_source} · Sub PPA {p.ppa.status}
                     </p>
                 </header>
-                <PlanningStages workspace={p.backUrl} summary={p.summaryUrl} current="ppas" />
+                <nav aria-label="Related AIP pages" className="flex flex-wrap gap-4 text-sm font-semibold text-blue-700 underline">
+                    <Link href={p.backUrl}>Back to AIP workspace</Link>
+                    <Link href={p.summaryUrl}>Review AIP</Link>
+                </nav>
                 <nav aria-label="Procurement lists" className="flex flex-wrap gap-2">
                     {p.sheets.map((s) => (
                         <Link
@@ -114,7 +120,7 @@ export default function Ppmp(p: Workspace) {
                             href={url + '?sheet=' + s.id}
                             className={'rounded border p-2 ' + (s.id === p.selected?.id ? 'font-bold' : '')}
                         >
-                            {s.reference} · {s.status} · {money(s.total_cents)}
+                            {s.reference} · {sheetStatus(s.status)} · {money(s.total_cents)}
                         </Link>
                     ))}
                     {p.canPrepare && p.sheets.length > 0 && (

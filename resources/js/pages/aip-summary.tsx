@@ -1,5 +1,4 @@
 import AnnualReviewPanel, { type ReviewProps } from '@/components/annual-review-panel';
-import PlanningStages from '@/components/planning-stages';
 import { money } from '@/components/procurement/schedule';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
@@ -37,12 +36,12 @@ export default function Summary({ document, programs, ceiling, history, summaryT
             <Head title="Annual AIP summary" />
             <div className="aip-workspace min-w-0 flex-1 space-y-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header>
-                    <h1 className="text-2xl font-bold text-blue-950">AIP summary</h1>
+                    <h1 className="text-2xl font-bold text-blue-950">Annual AIP review</h1>
                     <p className="mt-1 text-sm text-slate-600">
                         {document.office.name} · FY {document.fiscal_year} · {programs.length} PPAs · {activities.length} Sub PPAs
                     </p>
                 </header>
-                <PlanningStages workspace={back} summary={back + '/summary'} current="review" />
+                <Link href={back} className="inline-flex text-sm font-semibold text-blue-700 underline">Back to AIP workspace</Link>
                 <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <h2 className="font-semibold">{document.title}</h2>
                     {document.description && <p className="mt-1 text-sm whitespace-pre-line">{document.description}</p>}

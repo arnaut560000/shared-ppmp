@@ -32,11 +32,20 @@ export type Workspace = {
     catalogue: Item[];
     budget: { ceiling_cents: number | null; spent_cents: number; remaining_cents: number | null };
     available_for_sheet_cents: number | null;
+    canSubmitToGso: boolean;
+    canReviewForGso: boolean;
+    reviewHistory: { id: number; action: ReviewAction; comment: string | null; created_at: string }[];
     canPrepare: boolean;
     canEdit: boolean;
     legacy: boolean;
     message: string | null;
 };
+export type ReviewAction = 'submit_to_gso' | 'complete_gso_review' | 'return_from_gso';
+export function sheetStatus(status: string) {
+    if (status === 'pending_gso') return 'Awaiting GSO review';
+    if (status === 'submitted') return 'Awaiting approval';
+    return status;
+}
 const pesos = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
 export const money = (cents: number) => pesos.format(cents / 100);
 export const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);

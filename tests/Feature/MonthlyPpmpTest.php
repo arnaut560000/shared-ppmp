@@ -34,6 +34,46 @@ class MonthlyPpmpTest extends PpaTestCase
             'monthly_quantities' => [2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]]];
     }
 
+    public function test_department_and_gso_review_the_same_monthly_sheet(): void
+    {
+        $this->post($this->url(), $this->schedulePayload())->assertSessionHasNoErrors();
+        $sheet = $this->ppa->procurementLists()->sole();
+        $review = $this->url().'/'.$sheet->id.'/review';
+        $queue = '/ppmp-reviews?year=2027';
+        $gso = User::factory()->create(['role' => 'gso']);
+        $send = ['action' => 'submit_to_gso', 'version' => 1];
+        $return = ['action' => 'return_from_gso', 'version' => 2];
+        $this->get($queue)->assertForbidden();
+        $other = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
+        $this->actingAs(User::factory()->create(['role' => 'office', 'office_id' => $other->id]))
+            ->post($review, $send)->assertForbidden();
+        $this->actingAs($gso)->post($review, $send)->assertForbidden();
+        $this->get($queue)->assertInertia(fn (Assert $page) => $page->where('sheets.total', 0));
+
+        $this->actingAs($this->planner)->post($review, $send)->assertSessionHasNoErrors();
+        $this->assertSame('pending_gso', $sheet->fresh()->status);
+        $this->put($this->url().'/'.$sheet->id, [])->assertStatus(409);
+        $this->post($review, [...$return, 'comment' => 'Revise quantities'])->assertForbidden();
+        $this->actingAs($gso)->get($queue)->assertInertia(fn (Assert $page) => $page
+            ->where('reviewQueue', true)->where('sheets.data.0.office_name', 'ICT Office')->where('sheets.data.0.id', $sheet->id));
+        $this->get('/ppmp-reviews?year=2026')->assertInertia(fn (Assert $page) => $page->where('sheets.total', 0));
+        $this->post($review, $return)->assertSessionHasErrors('comment');
+        $this->post($review, [...$return, 'comment' => 'Revise quantities'])->assertSessionHasNoErrors();
+        $this->get($queue)->assertInertia(fn (Assert $page) => $page->where('sheets.total', 0));
+        $this->actingAs($this->planner)->get($this->url())->assertInertia(fn (Assert $page) => $page
+            ->where('canEdit', true)->where('reviewHistory.0.comment', 'Revise quantities'));
+        $data = $this->schedulePayload();
+        $data['items'][0]['monthly_quantities'][0] = 1;
+        $this->put($this->url().'/'.$sheet->id, [...$data, 'version' => 3])->assertSessionHasNoErrors();
+        $this->post($review, [...$send, 'version' => 4])->assertSessionHasNoErrors();
+        $this->actingAs($gso)->post($review, ['action' => 'complete_gso_review', 'version' => 2])->assertSessionHasErrors('workflow');
+        $this->post($review, ['action' => 'complete_gso_review', 'version' => 5])->assertSessionHasNoErrors();
+        $this->assertSame('submitted', $sheet->fresh()->status);
+        $this->assertNull($sheet->fresh()->approved_at);
+        $this->get($queue)->assertInertia(fn (Assert $page) => $page->where('sheets.total', 0));
+        $this->actingAs($this->planner)->get('/aips?year=2027')->assertInertia(fn (Assert $page) => $page->where('budget.spent_cents', 125000));
+    }
+
     public function test_my_ppmps_lists_saved_sheets_by_office_and_year(): void
     {
         $this->post($this->url(), $this->schedulePayload())->assertSessionHasNoErrors();

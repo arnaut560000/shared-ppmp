@@ -258,7 +258,7 @@ class PlanningService
             if ($plan->type === 'program') {
                 self::fail('Program headings are not submitted for financial approval.');
             }
-            if (! in_array($action, ['submit', 'approve', 'return'], true)) {
+            if (! in_array($action, ['submit', 'approve', 'return', 'submit_to_gso', 'complete_gso_review', 'return_from_gso'], true)) {
                 self::fail('Unknown workflow action.');
             }
 
@@ -268,7 +268,11 @@ class PlanningService
                 );
             }
 
-            if ($action === 'submit') {
+            if (in_array($action, ['submit', 'submit_to_gso'], true)) {
+                if ($action === 'submit_to_gso') {
+                    PlanningAccess::roles($user, ['office']);
+                    abort_unless($plan->type === 'ppmp', 404);
+                }
                 PlanningAccess::edit($user, $plan);
 
                 if (! $budget) {
@@ -285,12 +289,29 @@ class PlanningService
                         || $parent->office_id !== $plan->office_id || $parent->fiscal_year !== $plan->fiscal_year) {
                         self::fail('The PPMP must belong to a PPA in the same office and fiscal year.');
                     }
+                    if ($action === 'submit_to_gso') {
+                        AipDocument::ensureWritable($plan->office_id, $plan->fiscal_year, true);
+                        if (! $parent->permitsProcurementDrafts() || $plan->items->contains(fn ($item) => count($item->monthly_quantities ?? []) !== 12)) {
+                            self::fail('Only monthly sheets on an editable Sub PPA can be submitted to GSO.');
+                        }
+                    }
                 }
                 // Submitting changes the status only. Its saved costs already count.
                 OfficeBudgetService::requireAvailable(OfficeBudgetService::summary($plan->office_id, $plan->fiscal_year), 0);
 
-                $plan->status = 'submitted';
+                $plan->status = $action === 'submit_to_gso' ? 'pending_gso' : 'submitted';
                 $plan->submitted_at = now();
+            } elseif (in_array($action, ['complete_gso_review', 'return_from_gso'], true)) {
+                PlanningAccess::roles($user, ['gso']);
+                abort_unless($plan->type === 'ppmp', 404);
+                abort_if($plan->created_by === $user->id, 403, 'You cannot review your own sheet.');
+                if ($plan->status !== 'pending_gso') {
+                    self::fail('This sheet is no longer awaiting GSO review.');
+                }
+                if ($action === 'return_from_gso' && trim($comment ?? '') === '') {
+                    self::fail('Tell the department what needs to change.');
+                }
+                $plan->status = $action === 'complete_gso_review' ? 'submitted' : 'returned';
             } else {
                 PlanningAccess::roles(
                     $user,

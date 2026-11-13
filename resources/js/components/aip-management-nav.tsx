@@ -1,5 +1,4 @@
 import { SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, useSidebar } from '@/components/ui/sidebar';
-import { planningLink, planningSection } from '@/lib/planning-navigation';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, ClipboardList } from 'lucide-react';
@@ -7,43 +6,32 @@ import { useId, useState } from 'react';
 
 type PlanningProps = SharedData & {
     year?: number;
-    listUrl?: string;
-    backUrl?: string;
     ppa?: { fiscal_year: number };
 };
 
 export default function AipManagementNav() {
-    const { component, props, url } = usePage<PlanningProps>();
+    const { component, props } = usePage<PlanningProps>();
     const isPlanning = ['aips', 'ppas', 'ppmp', 'my-ppmps', 'aip-summary'].includes(component);
     const [expanded, setExpanded] = useState(isPlanning);
     const { state, setOpen, isMobile, setOpenMobile } = useSidebar();
     const submenuId = useId();
     const isOffice = props.auth.user.role === 'office';
     const year = props.year ?? (component === 'ppmp' ? props.ppa?.fiscal_year : undefined);
-    const index = planningLink('/aips', 'info', year);
-    const workspace = component === 'ppas' || component === 'aip-summary' ? props.listUrl : component === 'ppmp' ? props.backUrl : undefined;
-    const myPpmpsActive = isOffice && (component === 'my-ppmps' || component === 'ppmp');
-    const listActive =
-        isPlanning &&
-        !myPpmpsActive &&
-        (planningSection(url) === 'ppas' || component === 'ppmp' || (component === 'ppas' && props.editorVisible === true));
-
+    const isGso = props.auth.user.role === 'gso';
+    const myPpmpsActive = (isOffice || isGso) && (component === 'my-ppmps' || component === 'ppmp');
     const links = [
         {
             label: isOffice ? 'My AIP' : 'Department AIPs',
-            href: isOffice && workspace ? planningLink(workspace, 'info', year) : index,
-            active: isPlanning && !listActive && !myPpmpsActive && (isOffice || component === 'aips'),
+            href: year ? `/aips?year=${year}` : '/aips',
+            active: isPlanning && !myPpmpsActive,
         },
     ];
 
-    if (!isOffice || props.auth.user.office_id) {
-        links.push({ label: 'PPA List', href: planningLink(workspace ?? '/aips', 'ppas', year), active: listActive });
-    }
-
-    if (isOffice && props.auth.user.office_id) {
+    if ((isOffice && props.auth.user.office_id) || isGso) {
+        const path = isGso ? '/ppmp-reviews' : '/my-ppmps';
         links.push({
-            label: 'My PPMPs',
-            href: year ? `/my-ppmps?year=${year}` : '/my-ppmps',
+            label: isGso ? 'PPMPs for GSO review' : 'My PPMPs',
+            href: year ? `${path}?year=${year}` : path,
             active: myPpmpsActive,
         });
     }

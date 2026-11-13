@@ -1,4 +1,4 @@
-import { money } from '@/components/procurement/schedule';
+import { money, sheetStatus } from '@/components/procurement/schedule';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
@@ -8,13 +8,15 @@ type Sheet = {
     reference: string;
     status: string;
     total_cents: number;
+    office_name: string;
     activity_id: number;
     activity_title: string;
     heading_title: string;
 };
 
 type Props = {
-    office: string;
+    office: string | null;
+    reviewQueue: boolean;
     year: number;
     sheets: {
         data: Sheet[];
@@ -28,19 +30,21 @@ type Props = {
 
 const linkClass = 'font-semibold text-blue-700 underline underline-offset-2';
 
-export default function MyPpmps({ office, year, sheets }: Props) {
+export default function MyPpmps({ office, year, sheets, reviewQueue }: Props) {
+    const title = reviewQueue ? 'PPMPs for GSO review' : 'My PPMPs';
+    const listUrl = reviewQueue ? '/ppmp-reviews' : '/my-ppmps';
     const [filterYear, setFilterYear] = useState(String(year));
 
     return (
-        <AppLayout breadcrumbs={[{ title: 'My PPMPs', href: `/my-ppmps?year=${year}` }]}>
-            <Head title="My PPMPs" />
+        <AppLayout breadcrumbs={[{ title, href: `${listUrl}?year=${year}` }]}>
+            <Head title={title} />
 
             <div className="aip-workspace min-w-0 flex-1 space-y-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-blue-950">My PPMPs</h1>
+                        <h1 className="text-2xl font-bold text-blue-950">{title}</h1>
                         <p className="mt-1 text-sm text-slate-600">
-                            {office} · FY {year}
+                            {office ?? 'All departments'} · FY {year}
                         </p>
                     </div>
 
@@ -48,7 +52,7 @@ export default function MyPpmps({ office, year, sheets }: Props) {
                         className="flex items-end gap-2"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            router.get('/my-ppmps', { year: filterYear });
+                            router.get(listUrl, { year: filterYear });
                         }}
                     >
                         <label className="text-sm font-medium">
@@ -74,11 +78,11 @@ export default function MyPpmps({ office, year, sheets }: Props) {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <caption className="sr-only">
-                                    PPMP sheets for {office}, FY {year}
+                                    PPMP sheets for {office ?? 'all departments'}, FY {year}
                                 </caption>
                                 <thead className="bg-blue-50 text-blue-950">
                                     <tr>
-                                        {['PPMP reference', 'Parent PPA', 'Sub PPA', 'Estimated cost', 'Status', 'Action'].map((heading) => (
+                                        {['PPMP reference', ...(reviewQueue ? ['Office'] : []), 'Parent PPA', 'Sub PPA', 'Estimated cost', 'Status', 'Action'].map((heading) => (
                                             <th key={heading} scope="col" className="whitespace-nowrap px-4 py-3">
                                                 {heading}
                                             </th>
@@ -89,12 +93,13 @@ export default function MyPpmps({ office, year, sheets }: Props) {
                                     {sheets.data.map((sheet) => (
                                         <tr key={sheet.id}>
                                             <th scope="row" className="px-4 py-3">{sheet.reference}</th>
+                                            {reviewQueue && <td className="px-4 py-3">{sheet.office_name}</td>}
                                             <td className="px-4 py-3">{sheet.heading_title}</td>
                                             <td className="px-4 py-3">{sheet.activity_title}</td>
                                             <td className="whitespace-nowrap px-4 py-3 tabular-nums">
                                                 {money(sheet.total_cents)}
                                             </td>
-                                            <td className="px-4 py-3 capitalize">{sheet.status}</td>
+                                            <td className="px-4 py-3 capitalize">{sheetStatus(sheet.status)}</td>
                                             <td className="px-4 py-3">
                                                 <Link
                                                     href={`/aips/${sheet.activity_id}/ppmp?sheet=${sheet.id}`}
@@ -112,11 +117,11 @@ export default function MyPpmps({ office, year, sheets }: Props) {
                         <div className="space-y-2 p-5 text-sm">
                             <p>
                                 {sheets.total === 0
-                                    ? `Your office has no saved PPMP sheets for FY ${year}.`
+                                    ? (reviewQueue ? `No PPMPs are awaiting GSO review for FY ${year}.` : `Your office has no saved PPMP sheets for FY ${year}.`)
                                     : 'There are no sheets on this page.'}
                             </p>
-                            <Link href={`/aips?section=ppas&year=${year}`} className={linkClass}>
-                                Open PPA List
+                            <Link href={`/aips?year=${year}`} className={linkClass}>
+                                Open AIP workspace
                             </Link>
                         </div>
                     )}

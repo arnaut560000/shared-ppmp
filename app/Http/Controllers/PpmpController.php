@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SavePpmpRequest;
+use App\Models\AuditEvent;
 use App\Models\CatalogueItem;
 use App\Models\Plan;
 use App\Services\OfficeBudgetService;
@@ -18,8 +19,9 @@ class PpmpController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        PlanningAccess::roles($user, ['office']);
-        abort_unless($user->office_id, 403, 'Your account needs an assigned office.');
+        $queue = $request->routeIs('ppmp.reviews');
+        PlanningAccess::roles($user, [$queue ? 'gso' : 'office']);
+        abort_unless($queue || $user->office_id, 403, 'Your account needs an assigned office.');
 
         $data = $request->validate(['year' => ['nullable', 'integer', 'between:2020,2100']]);
         $year = (int) ($data['year'] ?? now()->year);
@@ -30,7 +32,9 @@ class PpmpController extends Controller
             ->where('plans.type', 'ppmp')
             ->where('activity.type', 'aip')
             ->where('heading.type', 'program')
-            ->where('plans.office_id', $user->office_id)
+            ->join('offices', 'offices.id', '=', 'plans.office_id')
+            ->when($queue, fn ($q) => $q->where('plans.status', 'pending_gso')->orderBy('plans.submitted_at'),
+                fn ($q) => $q->where('plans.office_id', $user->office_id))
             ->where('plans.fiscal_year', $year)
             ->whereColumn('activity.office_id', 'plans.office_id')
             ->whereColumn('activity.fiscal_year', 'plans.fiscal_year')
@@ -41,12 +45,13 @@ class PpmpController extends Controller
             ->orderBy('plans.reference')
             ->orderBy('plans.id')
             ->paginate(20, [
-                'plans.id', 'plans.reference', 'plans.status', 'plans.total_cents',
+                'plans.id', 'plans.reference', 'plans.status', 'plans.total_cents', 'offices.name as office_name',
                 'activity.id as activity_id', 'activity.title as activity_title', 'heading.title as heading_title',
             ])->appends(['year' => $year]);
 
         return Inertia::render('my-ppmps', [
-            'office' => $user->office->name,
+            'office' => $queue ? null : $user->office->name,
+            'reviewQueue' => $queue,
             'year' => $year,
             'sheets' => $sheets,
         ]);
@@ -95,11 +100,37 @@ class PpmpController extends Controller
             'available' => ['MOOE' => $available ?? 0, 'CO' => $available ?? 0],
             'catalogue' => CatalogueItem::where('active', true)->whereIn('expense_class', ['MOOE', 'CO'])
                 ->orderBy('name')->get(['id', 'code', 'name', 'specification', 'unit', 'category', 'expense_class', 'price_cents']),
+            'canSubmitToGso' => $user->role === 'office' && $canPrepare && ! $legacy && $sheet
+                && in_array($sheet->status, ['draft', 'returned'], true) && $sheet->items->isNotEmpty(),
+            'canReviewForGso' => $user->role === 'gso' && $sheet?->status === 'pending_gso' && $sheet->created_by !== $user->id,
+            'reviewHistory' => $sheet ? AuditEvent::where('subject_type', 'plan')->where('subject_id', $sheet->id)
+                ->where('office_id', $sheet->office_id)->whereIn('action', ['submit_to_gso', 'complete_gso_review', 'return_from_gso'])
+                ->latest('id')->get(['id', 'action', 'comment', 'created_at']) : [],
             'canPrepare' => $canPrepare,
             'canEdit' => $canPrepare && ! $legacy && (! $sheet || in_array($sheet->status, ['draft', 'returned'], true)),
             'legacy' => (bool) $legacy,
             'message' => $request->session()->get('success'),
         ]);
+    }
+
+    public function review(Request $request, Plan $ppa, Plan $ppmp, PlanningService $service): RedirectResponse
+    {
+        PlanningAccess::view($request->user(), $ppa);
+        abort_unless($ppa->type === 'aip' && $ppa->parent_ppa_id && $ppmp->type === 'ppmp'
+            && $ppmp->parent_id === $ppa->id && $ppmp->office_id === $ppa->office_id && $ppmp->fiscal_year === $ppa->fiscal_year, 404);
+        $data = $request->validate([
+            'action' => ['required', 'in:submit_to_gso,complete_gso_review,return_from_gso'],
+            'version' => ['required', 'integer', 'min:1'],
+            'comment' => ['nullable', 'required_if:action,return_from_gso', 'string', 'max:2000'],
+        ]);
+        PlanningAccess::roles($request->user(), [$data['action'] === 'submit_to_gso' ? 'office' : 'gso']);
+        $service->transition($request->user(), $ppmp, $data['action'], (int) $data['version'], $data['comment'] ?? null);
+
+        return to_route('ppmp.show', ['ppa' => $ppa->id, 'sheet' => $ppmp->id])->with('success', match ($data['action']) {
+            'submit_to_gso' => 'PPMP submitted to GSO.',
+            'return_from_gso' => 'PPMP returned to the department for revision.',
+            'complete_gso_review' => 'GSO review complete. The PPMP is awaiting approval.',
+        });
     }
 
     public function store(SavePpmpRequest $request, Plan $ppa, PlanningService $service): RedirectResponse

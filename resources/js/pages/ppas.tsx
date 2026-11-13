@@ -1,8 +1,8 @@
+import { sheetStatus } from '@/components/procurement/schedule';
 import PlanningDeleteButton from '@/components/planning-delete-button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
-import { planningLink, planningSection } from '@/lib/planning-navigation';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Coins, FileText, Folder, FolderOpen, Home, Pencil, Plus, Puzzle } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 
@@ -193,7 +193,7 @@ function SavedProcurement({ lists, ppaId }: { lists: ProcurementList[]; ppaId: n
             {lists.map((list) => (
                 <details key={list.id} open={lists.length === 1} className="border-b last:border-0">
                     <summary className="cursor-pointer p-4 text-sm font-semibold">
-                        {list.reference} · {list.status} · {money(list.total_cents)}
+                        {list.reference} · {sheetStatus(list.status)} · {money(list.total_cents)}
                     </summary>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
@@ -407,7 +407,6 @@ const outline =
     'inline-flex items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-sm font-semibold text-blue-800 hover:bg-blue-50';
 const panel = 'overflow-hidden rounded-xl border border-[#cfdeee] bg-white shadow-sm';
 const panelHead = 'flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-blue-100 bg-[#edf4fd] px-4 py-2';
-const tabClass = 'inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-semibold';
 function AipDialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
     return (
         <Dialog
@@ -442,8 +441,6 @@ export default function Ppas(props: Props) {
 
 function Workspace(props: Props) {
     const { document, year, plans, budget, canWrite, editorVisible, listUrl, workspaceUrl } = props;
-    const section = planningSection(usePage().url);
-    const [tab, setTab] = useState<'configuration' | 'summary' | 'history'>('configuration');
     const [openPrograms, setOpenPrograms] = useState<number[]>(plans.data.slice(0, 1).map((p) => p.id));
     const [selected, setSelected] = useState<number | null>(null);
     const [editInfo, setEditInfo] = useState(false);
@@ -462,7 +459,7 @@ function Workspace(props: Props) {
                     <ChevronRight size={12} />
                     <Link href={'/aips?year=' + year}>AIP Management</Link>
                     <ChevronRight size={12} />
-                    <span>{section === 'ppas' ? 'PPA List' : 'AIP Details'}</span>
+                    <span>AIP workspace</span>
                 </nav>
                 <div className="mx-auto max-w-[1600px] space-y-4 p-3 sm:p-5">
                     <header className="flex flex-wrap items-center gap-4">
@@ -478,13 +475,14 @@ function Workspace(props: Props) {
                             <select
                                 aria-label="Fiscal year"
                                 value={year}
-                                onChange={(e) => router.get(workspaceUrl, { year: e.target.value, ...(section ? { section } : {}) })}
+                                onChange={(e) => router.get(workspaceUrl, { year: e.target.value })}
                             >
                                 {Array.from({ length: 81 }, (_, i) => 2020 + i).map((y) => (
                                     <option key={y}>{y}</option>
                                 ))}
                             </select>
                         </label>
+                        {summaryUrl && <Link href={summaryUrl} className={buttonClass}>Review AIP</Link>}
                         <dl className="grid w-full grid-cols-[1.4fr_1fr_1fr] gap-2 xl:w-auto">
                             {(
                                 [
@@ -503,28 +501,6 @@ function Workspace(props: Props) {
                             ))}
                         </dl>
                     </header>
-                    <nav aria-label="AIP views" className="flex overflow-x-auto rounded-lg border border-blue-100 bg-white px-1">
-                        {(
-                            [
-                                ['configuration', 'PPA Configuration'],
-                                ['summary', 'Summary'],
-                                ['history', 'Approval History'],
-                            ] as const
-                        ).map(([key, label]) => (
-                            <button
-                                key={key}
-                                type="button"
-                                aria-pressed={tab === key}
-                                onClick={() => setTab(key)}
-                                className={
-                                    tabClass +
-                                    (tab === key ? ' border-blue-700 text-blue-800' : ' border-transparent text-slate-600 hover:bg-blue-50')
-                                }
-                            >
-                                {label}
-                            </button>
-                        ))}
-                    </nav>
                     {props.message && (
                         <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
                             {props.message}
@@ -532,263 +508,235 @@ function Workspace(props: Props) {
                     )}
                     {budget.ceiling_cents === null && (
                         <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-                            You can create PPAs now. Assign an office budget for FY {year} before recording expenses or saving PPMP items.
+                            The Budget Office must assign a budget for FY {year} before this office can save expenses or PPMP items.
                         </p>
                     )}
-                    {tab === 'configuration' && (
-                        <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                            <section className={panel}>
-                                <header className={panelHead}>
-                                    <h2 className="font-bold">AIP Structure</h2>
-                                    {canWrite && (
-                                        <Link className={buttonClass + ' inline-flex items-center gap-1'} href={listUrl + '&create=1'}>
-                                            <Plus size={15} />
-                                            Add PPA
-                                        </Link>
-                                    )}
-                                </header>
-                                <div className="divide-y divide-blue-100">
-                                    {plans.data.length === 0 && <p className="p-5 text-slate-600">No programs for this fiscal year.</p>}
-                                    {plans.data.map((program) => {
-                                        const open = openPrograms.includes(program.id);
-                                        return (
-                                            <div key={program.id}>
-                                                <div
-                                                    className={
-                                                        'flex items-center gap-1 p-2.5 sm:gap-2 ' +
-                                                        (group?.id === program.id ? 'bg-blue-100/70' : 'bg-blue-50/50')
-                                                    }
-                                                >
-                                                    <button
-                                                        className="rounded p-1 hover:bg-blue-100"
-                                                        aria-label={(open ? 'Collapse ' : 'Expand ') + program.title}
-                                                        aria-expanded={open}
-                                                        onClick={() =>
-                                                            setOpenPrograms((ids) =>
-                                                                open ? ids.filter((id) => id !== program.id) : [...ids, program.id],
-                                                            )
-                                                        }
-                                                    >
-                                                        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                                    </button>
-                                                    <button
-                                                        className="flex min-w-0 flex-1 items-start gap-2 text-left"
-                                                        onClick={() => setSelected(program.id)}
-                                                    >
-                                                        {open ? (
-                                                            <FolderOpen size={18} className="mt-0.5 shrink-0 text-blue-700" />
-                                                        ) : (
-                                                            <Folder size={18} className="mt-0.5 shrink-0 text-blue-700" />
-                                                        )}
-                                                        <span>
-                                                            <strong className="break-words">{program.title}</strong>
-                                                            <span className="mt-1 block text-xs">
-                                                                {money(program.total_cents)}{' '}
-                                                                <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-blue-800">
-                                                                    {program.children.length} {program.children.length === 1 ? 'Sub PPA' : 'Sub PPAs'}
-                                                                </span>
-                                                            </span>
-                                                        </span>
-                                                    </button>
-                                                    {canWrite && (
-                                                        <Link
-                                                            className={outline}
-                                                            href={'/aips/' + program.id + '/ppas/create'}
-                                                            aria-label={'Add Sub PPA under ' + program.title}
-                                                        >
-                                                            <Plus size={14} />
-                                                            Sub PPA
-                                                        </Link>
-                                                    )}
-                                                </div>
-                                                {open && (
-                                                    <div className="my-2 ml-6 space-y-2 border-l border-blue-200 pr-3 pl-3 sm:ml-9">
-                                                        {program.children.length === 0 && (
-                                                            <p className="py-2 text-xs text-slate-500">No Sub PPAs under this PPA.</p>
-                                                        )}
-                                                        {program.children.map((ppa) => (
-                                                            <button
-                                                                type="button"
-                                                                aria-pressed={selected === ppa.id}
-                                                                key={ppa.id}
-                                                                onClick={() => setSelected(ppa.id)}
-                                                                className={
-                                                                    'flex w-full items-start gap-2 rounded-md border p-2.5 text-left ' +
-                                                                    (selected === ppa.id
-                                                                        ? 'border-blue-400 bg-blue-50'
-                                                                        : 'border-amber-200 bg-[#fffbef] hover:border-blue-300')
-                                                                }
-                                                            >
-                                                                <FileText size={16} className="mt-0.5 shrink-0 text-blue-600" />
-                                                                <span>
-                                                                    <strong>{ppa.title}</strong>
-                                                                    <span className="mt-1 block text-xs text-slate-600">
-                                                                        {money(ppa.total_cents)} · {ppa.item_count} PPMP item lines
-                                                                    </span>
-                                                                </span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                {plans.last_page > 1 && (
-                                    <nav aria-label="PPA pages" className="flex items-center gap-3 border-t p-3 text-xs">
-                                        <span>
-                                            Page {plans.current_page} of {plans.last_page}
-                                        </span>
-                                        {plans.prev_page_url && (
-                                            <Link className="text-blue-700 underline" href={planningLink(plans.prev_page_url, section ?? 'info')}>
-                                                Previous
-                                            </Link>
-                                        )}
-                                        {plans.next_page_url && (
-                                            <Link className="text-blue-700 underline" href={planningLink(plans.next_page_url, section ?? 'info')}>
-                                                Next
-                                            </Link>
-                                        )}
-                                    </nav>
-                                )}
-                            </section>
-                            <section className={panel} aria-label="Selected details">
-                                <header className={panelHead}>
-                                    <h2 className="font-bold">Details</h2>
-                                    {selected !== null && (
-                                        <button className={outline} onClick={() => setSelected(null)}>
-                                            AIP details
-                                        </button>
-                                    )}
-                                    {!group && canWrite && (
-                                        <button className={outline} onClick={() => setEditInfo(true)}>
-                                            <Pencil size={14} />
-                                            {document.id ? 'Edit AIP' : 'Create AIP'}
-                                        </button>
-                                    )}
-                                </header>
-                                <div className="space-y-4 p-4">
-                                    <h3 className="font-bold">{selectedTitle}</h3>
-                                    <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
-                                        <Detail label={group ? 'Reference code' : 'AIP record'}>
-                                            {activity?.reference ?? group?.reference ?? (document.id ? '#' + document.id : 'Not created')}
-                                        </Detail>
-                                        <Detail label="Fiscal year">{year}</Detail>
-                                        <Detail label="Office">{document.office.name}</Detail>
-                                        {activity ? (
-                                            <Detail label="Sub PPA status">
-                                                <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-900 capitalize">
-                                                    {activity.status}
-                                                </span>
-                                            </Detail>
-                                        ) : (
-                                            <Detail label={group ? 'Sub PPAs in this PPA' : 'Office budget'}>
-                                                {group
-                                                    ? group.children.length
-                                                    : budget.ceiling_cents === null
-                                                      ? 'Not assigned'
-                                                      : money(budget.ceiling_cents)}
-                                            </Detail>
-                                        )}
-                                        <Detail label={activity ? 'Sub PPA amount' : group ? 'PPA amount' : 'Office balance'}>
-                                            {group
-                                                ? money(activity?.total_cents ?? group.total_cents)
-                                                : budget.remaining_cents === null
-                                                  ? 'Not assigned'
-                                                  : money(budget.remaining_cents)}
-                                        </Detail>
-                                        {group && group.legacy_total_cents > 0 && !activity && (
-                                            <Detail label="Historical heading amount">{money(group.legacy_total_cents)}</Detail>
-                                        )}
-                                    </dl>
-                                    {(!group || activity) && (
-                                        <dl className="border-t pt-3">
-                                            <Detail label="Description">
-                                                {(activity ? activity.description : document.description) || 'No description recorded.'}
-                                            </Detail>
-                                        </dl>
-                                    )}
-                                    {canWrite && !group && document.id && <PlanningDeleteButton kind="aip" id={document.id} />}
-                                    {group && (
-                                        <div className="flex flex-wrap gap-2 border-t pt-3">
-                                            <Link className={outline} href={'/aips/' + (activity?.id ?? group.id) + '/view'}>
-                                                View full details
-                                            </Link>
-                                            {(activity ? activity.can_edit : canWrite) && (
-                                                <Link className={outline} href={'/aips/' + (activity?.id ?? group.id) + '/edit'}>
-                                                    <Pencil size={14} />
-                                                    Edit
-                                                </Link>
-                                            )}
-                                            {(activity ? activity.can_edit : canWrite) && (
-                                                <PlanningDeleteButton
-                                                    key={activity?.id ?? group.id}
-                                                    kind={activity ? 'sub-ppa' : 'ppa'}
-                                                    id={activity?.id ?? group.id}
-                                                />
-                                            )}
-                                            {activity && (
-                                                <Link className={outline} href={'/aips/' + activity.id + '/ppmp'}>
-                                                    Open PPMP
-                                                </Link>
-                                            )}
-                                            {activity?.can_prepare_ppmp && (
-                                                <Link className={buttonClass} href={'/aips/' + activity.id + '/ppmp?new=1'}>
-                                                    + Add PPMP
-                                                </Link>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-                        </div>
-                    )}
-                    {tab === 'summary' && (
+                    <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
                         <section className={panel}>
                             <header className={panelHead}>
-                                <h2 className="font-bold">AIP Summary</h2>
-                                {summaryUrl && (
-                                    <Link className={outline} href={summaryUrl}>
-                                        Review full AIP
+                                <h2 className="font-bold">PPAs and Sub PPAs</h2>
+                                {canWrite && (
+                                    <Link className={buttonClass + ' inline-flex items-center gap-1'} href={listUrl + '&create=1'}>
+                                        <Plus size={15} />
+                                        Add PPA
                                     </Link>
                                 )}
                             </header>
-                            <dl className="grid gap-4 p-5 sm:grid-cols-3">
-                                <Detail label="Office ceiling">{budget.ceiling_cents === null ? 'Not assigned' : money(budget.ceiling_cents)}</Detail>
-                                <Detail label="Saved spending">{money(budget.spent_cents)}</Detail>
-                                <Detail label="Remaining office budget">
-                                    {budget.remaining_cents === null ? 'Not assigned' : money(budget.remaining_cents)}
-                                </Detail>
-                            </dl>
-                        </section>
-                    )}
-                    {tab === 'history' && (
-                        <section className={panel}>
-                            <header className={panelHead}>
-                                <h2 className="font-bold">Sub PPA Approval History</h2>
-                            </header>
-                            {props.approvalHistory.length ? (
-                                <div className="p-4">
-                                    <p className="mb-2 text-xs text-slate-500">Latest 50 Sub PPA workflow events</p>
-                                    <ol className="divide-y">
-                                        {props.approvalHistory.map((event) => (
-                                            <li key={event.id} className="space-y-1 py-3">
-                                                <strong>
-                                                    {event.reference} ·{' '}
-                                                    {{ submit: 'Submitted', approve: 'Approved', return: 'Returned' }[event.action]}
-                                                </strong>
-                                                <p className="text-xs text-slate-600">
-                                                    {event.created_at} · {event.actor ?? 'Unknown user'}
-                                                </p>
-                                                {event.comment && <p>{event.comment}</p>}
-                                            </li>
-                                        ))}
-                                    </ol>
-                                </div>
-                            ) : (
-                                <p className="p-5 text-slate-600">No Sub PPA submissions or approval decisions have been recorded for this AIP.</p>
+                            <div className="divide-y divide-blue-100">
+                                {plans.data.length === 0 && <p className="p-5 text-slate-600">No PPAs for this fiscal year.</p>}
+                                {plans.data.map((program) => {
+                                    const open = openPrograms.includes(program.id);
+                                    return (
+                                        <div key={program.id}>
+                                            <div
+                                                className={
+                                                    'flex items-center gap-1 p-2.5 sm:gap-2 ' +
+                                                    (group?.id === program.id ? 'bg-blue-100/70' : 'bg-blue-50/50')
+                                                }
+                                            >
+                                                <button
+                                                    className="rounded p-1 hover:bg-blue-100"
+                                                    aria-label={(open ? 'Collapse ' : 'Expand ') + program.title}
+                                                    aria-expanded={open}
+                                                    onClick={() =>
+                                                        setOpenPrograms((ids) =>
+                                                            open ? ids.filter((id) => id !== program.id) : [...ids, program.id],
+                                                        )
+                                                    }
+                                                >
+                                                    {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                </button>
+                                                <button
+                                                    className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                                                    onClick={() => setSelected(program.id)}
+                                                >
+                                                    {open ? (
+                                                        <FolderOpen size={18} className="mt-0.5 shrink-0 text-blue-700" />
+                                                    ) : (
+                                                        <Folder size={18} className="mt-0.5 shrink-0 text-blue-700" />
+                                                    )}
+                                                    <span>
+                                                        <strong className="break-words">{program.title}</strong>
+                                                        <span className="mt-1 block text-xs">
+                                                            {money(program.total_cents)}{' '}
+                                                            <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-blue-800">
+                                                                {program.children.length} {program.children.length === 1 ? 'Sub PPA' : 'Sub PPAs'}
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </button>
+                                                {canWrite && (
+                                                    <Link
+                                                        className={outline}
+                                                        href={'/aips/' + program.id + '/ppas/create'}
+                                                        aria-label={'Add Sub PPA under ' + program.title}
+                                                    >
+                                                        <Plus size={14} />
+                                                        Sub PPA
+                                                    </Link>
+                                                )}
+                                            </div>
+                                            {open && (
+                                                <div className="my-2 ml-6 space-y-2 border-l border-blue-200 pr-3 pl-3 sm:ml-9">
+                                                    {program.children.length === 0 && (
+                                                        <p className="py-2 text-xs text-slate-500">No Sub PPAs under this PPA.</p>
+                                                    )}
+                                                    {program.children.map((ppa) => (
+                                                        <button
+                                                            type="button"
+                                                            aria-pressed={selected === ppa.id}
+                                                            key={ppa.id}
+                                                            onClick={() => setSelected(ppa.id)}
+                                                            className={
+                                                                'flex w-full items-start gap-2 rounded-md border p-2.5 text-left ' +
+                                                                (selected === ppa.id
+                                                                    ? 'border-blue-400 bg-blue-50'
+                                                                    : 'border-amber-200 bg-[#fffbef] hover:border-blue-300')
+                                                            }
+                                                        >
+                                                            <FileText size={16} className="mt-0.5 shrink-0 text-blue-600" />
+                                                            <span>
+                                                                <strong>{ppa.title}</strong>
+                                                                <span className="mt-1 block text-xs text-slate-600">
+                                                                    {money(ppa.total_cents)} · {ppa.item_count} PPMP item lines
+                                                                </span>
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {plans.last_page > 1 && (
+                                <nav aria-label="PPA pages" className="flex items-center gap-3 border-t p-3 text-xs">
+                                    <span>
+                                        Page {plans.current_page} of {plans.last_page}
+                                    </span>
+                                    {plans.prev_page_url && (
+                                        <Link className="text-blue-700 underline" href={plans.prev_page_url}>
+                                            Previous
+                                        </Link>
+                                    )}
+                                    {plans.next_page_url && (
+                                        <Link className="text-blue-700 underline" href={plans.next_page_url}>
+                                            Next
+                                        </Link>
+                                    )}
+                                </nav>
                             )}
                         </section>
+                        <section className={panel} aria-label="Selected details">
+                            <header className={panelHead}>
+                                <h2 className="font-bold">Details</h2>
+                                {selected !== null && (
+                                    <button className={outline} onClick={() => setSelected(null)}>
+                                        AIP details
+                                    </button>
+                                )}
+                                {!group && canWrite && (
+                                    <button className={outline} onClick={() => setEditInfo(true)}>
+                                        <Pencil size={14} />
+                                        {document.id ? 'Edit AIP' : 'Create AIP'}
+                                    </button>
+                                )}
+                            </header>
+                            <div className="space-y-4 p-4">
+                                <h3 className="font-bold">{selectedTitle}</h3>
+                                <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+                                    <Detail label={group ? 'Reference code' : 'AIP record'}>
+                                        {activity?.reference ?? group?.reference ?? (document.id ? '#' + document.id : 'Not created')}
+                                    </Detail>
+                                    <Detail label="Fiscal year">{year}</Detail>
+                                    <Detail label="Office">{document.office.name}</Detail>
+                                    {activity ? (
+                                        <Detail label="Sub PPA status">
+                                            <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-900 capitalize">
+                                                {activity.status}
+                                            </span>
+                                        </Detail>
+                                    ) : (
+                                        <Detail label={group ? 'Sub PPAs in this PPA' : 'Office budget'}>
+                                            {group
+                                                ? group.children.length
+                                                : budget.ceiling_cents === null
+                                                  ? 'Not assigned'
+                                                  : money(budget.ceiling_cents)}
+                                        </Detail>
+                                    )}
+                                    <Detail label={activity ? 'Sub PPA amount' : group ? 'PPA amount' : 'Office balance'}>
+                                        {group
+                                            ? money(activity?.total_cents ?? group.total_cents)
+                                            : budget.remaining_cents === null
+                                              ? 'Not assigned'
+                                              : money(budget.remaining_cents)}
+                                    </Detail>
+                                    {group && group.legacy_total_cents > 0 && !activity && (
+                                        <Detail label="Historical heading amount">{money(group.legacy_total_cents)}</Detail>
+                                    )}
+                                </dl>
+                                {(!group || activity) && (
+                                    <dl className="border-t pt-3">
+                                        <Detail label="Description">
+                                            {(activity ? activity.description : document.description) || 'No description recorded.'}
+                                        </Detail>
+                                    </dl>
+                                )}
+                                {canWrite && !group && document.id && <PlanningDeleteButton kind="aip" id={document.id} />}
+                                {group && (
+                                    <div className="flex flex-wrap gap-2 border-t pt-3">
+                                        <Link className={outline} href={'/aips/' + (activity?.id ?? group.id) + '/view'}>
+                                            View full details
+                                        </Link>
+                                        {(activity ? activity.can_edit : canWrite) && (
+                                            <Link className={outline} href={'/aips/' + (activity?.id ?? group.id) + '/edit'}>
+                                                <Pencil size={14} />
+                                                Edit
+                                            </Link>
+                                        )}
+                                        {(activity ? activity.can_edit : canWrite) && (
+                                            <PlanningDeleteButton
+                                                key={activity?.id ?? group.id}
+                                                kind={activity ? 'sub-ppa' : 'ppa'}
+                                                id={activity?.id ?? group.id}
+                                            />
+                                        )}
+                                        {activity && (
+                                            <Link className={outline} href={'/aips/' + activity.id + '/ppmp'}>
+                                                Open PPMP
+                                            </Link>
+                                        )}
+                                        {activity?.can_prepare_ppmp && (
+                                            <Link className={buttonClass} href={'/aips/' + activity.id + '/ppmp?new=1'}>
+                                                + Add PPMP
+                                            </Link>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                    {props.approvalHistory.length > 0 && (
+                        <details className={panel}>
+                            <summary className="cursor-pointer p-4 font-semibold">Sub PPA decision history</summary>
+                            <div className="px-4 pb-4">
+                                <ol className="divide-y">
+                                    {props.approvalHistory.map((event) => (
+                                        <li key={event.id} className="space-y-1 py-3">
+                                            <strong>
+                                                {event.reference} ·{' '}
+                                                {{ submit: 'Submitted', approve: 'Approved', return: 'Returned' }[event.action]}
+                                            </strong>
+                                            <p className="text-xs text-slate-600">
+                                                {event.created_at} · {event.actor ?? 'Unknown user'}
+                                            </p>
+                                            {event.comment && <p>{event.comment}</p>}
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
+                        </details>
                     )}
                 </div>
                 {editInfo && <AipInformation document={document} year={year} canWrite={canWrite} onClose={() => setEditInfo(false)} />}

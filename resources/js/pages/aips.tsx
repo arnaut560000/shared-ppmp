@@ -1,7 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
-import { planningLink, planningSection } from '@/lib/planning-navigation';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 type Office = { id: number; code: string; name: string };
@@ -35,8 +34,7 @@ const buttonClass = 'rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text
 const money = (cents: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(cents / 100);
 
 export default function Aips({ year, canWrite, offices, documents, message }: Props) {
-    const section = planningSection(usePage().url);
-    const choosingPpas = section === 'ppas';
+    const [officeId, setOfficeId] = useState('');
     const [filterYear, setFilterYear] = useState(String(year));
 
     return (
@@ -45,18 +43,13 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
             <div className="aip-workspace flex min-w-0 flex-1 flex-col gap-5 bg-slate-50 p-4 text-slate-900 md:p-6">
                 <header className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <h1 className="mt-1 text-2xl font-bold">{choosingPpas ? 'PPA List' : 'Annual Investment Plans'}</h1>
-                        <p className="text-muted-foreground mt-2 text-sm">
-                            {choosingPpas
-                                ? 'Choose a department to view its PPA list.'
-                                : 'View department allocations and open their programs, projects and activities.'}
-                        </p>
+                        <h1 className="mt-1 text-2xl font-bold">Department AIPs</h1>
                     </div>
                     <form
                         className="flex items-end gap-2"
                         onSubmit={(e) => {
                             e.preventDefault();
-                            router.get('/aips', { year: filterYear, ...(section ? { section } : {}) });
+                            router.get('/aips', { year: filterYear });
                         }}
                     >
                         <div>
@@ -79,9 +72,6 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                         </button>
                     </form>
                 </header>
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-                    Each annual plan groups one office’s programs and procurement requirements for the selected year.
-                </div>
                 {message && (
                     <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
                         {message}
@@ -94,25 +84,28 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                     </div>
                 )}
                 {canWrite && offices.length > 0 && (
-                    <section className="bg-card rounded-xl border p-5">
-                        <h2 className="font-semibold">Open a department's planning workspace</h2>
-                        <p className="text-muted-foreground mt-1 text-sm">
-                            Administrator access. Department users work only in their assigned office.
-                        </p>
-                        <ul className="mt-3 divide-y">
-                            {offices.map((office) => (
-                                <li key={office.id} className="flex items-center justify-between gap-4 py-3">
-                                    <span>
+                    <form
+                        className="flex flex-wrap items-end gap-3 rounded-xl border bg-white p-4"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (officeId) router.get('/aips/offices/' + officeId, { year });
+                        }}
+                    >
+                        <label className="text-sm font-medium">
+                            Department workspace
+                            <select className={fieldClass} value={officeId} required onChange={(e) => setOfficeId(e.target.value)}>
+                                <option value="">Select a department</option>
+                                {offices.map((office) => (
+                                    <option key={office.id} value={office.id}>
                                         {office.code} — {office.name}
-                                    </span>
-                                    <Link className={buttonClass} href={planningLink(`/aips/offices/${office.id}`, section ?? 'info', year)}>
-                                        {choosingPpas ? 'Open PPA list' : 'Open AIP'}
-                                        <span className="sr-only"> for {office.name}</span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <button className={buttonClass} disabled={!officeId}>
+                            Open workspace
+                        </button>
+                    </form>
                 )}
                 <section className="bg-card overflow-hidden rounded-xl border border-t-4 border-t-yellow-400 shadow-sm">
                     <div className="border-b p-5">
@@ -148,9 +141,9 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                                             <td className="px-5 py-4">
                                                 <p className="font-semibold">{document.office.name}</p>
                                                 <p className="text-muted-foreground">{document.title}</p>
-                                                <Link href={`/aips/documents/${document.id}/summary`} className="text-blue-700 underline">
-                                                    Review AIP <span className="capitalize">({document.review_status})</span>
-                                                </Link>
+                                                <p className="mt-1 text-xs font-medium text-blue-800 capitalize">
+                                                    {document.review_status === 'submitted' ? 'Under review' : document.review_status}
+                                                </p>
                                             </td>
                                             <td className="px-5 py-4">{document.ppas_count}</td>
                                             <td className="px-5 py-4 text-right whitespace-nowrap">
@@ -158,10 +151,10 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                                             </td>
                                             <td className="px-5 py-4">
                                                 <Link
-                                                    href={planningLink(`/aips/documents/${document.id}`, choosingPpas ? 'ppas' : 'info', year)}
+                                                    href={`/aips/documents/${document.id}/summary`}
                                                     className="font-semibold text-blue-700 underline"
                                                 >
-                                                    {choosingPpas ? 'Open PPA list' : 'Open AIP'}
+                                                    Review AIP
                                                     <span className="sr-only"> for {document.office.name}</span>
                                                 </Link>
                                             </td>
@@ -171,29 +164,25 @@ export default function Aips({ year, canWrite, offices, documents, message }: Pr
                             </table>
                         </div>
                     )}
-                    <div className="flex items-center justify-between border-t p-4 text-sm">
-                        <span>
-                            Page {documents.current_page} of {documents.last_page}
-                        </span>
-                        <div className="flex gap-4">
-                            {documents.prev_page_url && (
-                                <Link
-                                    href={section ? planningLink(documents.prev_page_url, section) : documents.prev_page_url}
-                                    className="text-blue-700 underline"
-                                >
-                                    Previous
-                                </Link>
-                            )}
-                            {documents.next_page_url && (
-                                <Link
-                                    href={section ? planningLink(documents.next_page_url, section) : documents.next_page_url}
-                                    className="text-blue-700 underline"
-                                >
-                                    Next
-                                </Link>
-                            )}
+                    {documents.last_page > 1 && (
+                        <div className="flex items-center justify-between border-t p-4 text-sm">
+                            <span>
+                                Page {documents.current_page} of {documents.last_page}
+                            </span>
+                            <div className="flex gap-4">
+                                {documents.prev_page_url && (
+                                    <Link href={documents.prev_page_url} className="text-blue-700 underline">
+                                        Previous
+                                    </Link>
+                                )}
+                                {documents.next_page_url && (
+                                    <Link href={documents.next_page_url} className="text-blue-700 underline">
+                                        Next
+                                    </Link>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </section>
             </div>
         </AppLayout>
