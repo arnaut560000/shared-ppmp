@@ -19,6 +19,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [PlanningDeletionController::class, 'preview'])->name('aips.deletion.preview');
         Route::delete('/', [PlanningDeletionController::class, 'destroy'])->name('aips.deletion.destroy');
     });
+    Route::post('aips/documents/{document}/review', [AipSummaryController::class, 'decide'])->name('aips.documents.review');
     Route::put('aips/documents/{document}', [AipDocumentController::class, 'update'])->name('aips.documents.update');
     Route::get('aips/documents/{document}/summary', AipSummaryController::class)->name('aips.documents.summary');
     Route::get('aips/{ppa}/ppmp', [PpmpController::class, 'show'])->name('ppmp.show');
