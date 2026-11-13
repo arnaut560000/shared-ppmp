@@ -61,4 +61,17 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->assertSame('returned', $this->document()->review_status);
         $this->assertDatabaseHas('audit_events', ['subject_type' => 'aip_review', 'comment' => 'Clarify the target.']);
     }
+
+    public function test_resubmission_restarts_both_reviews(): void
+    {
+        $this->child();
+        $planning = User::factory()->create(['role' => 'mpdc']);
+        $budget = User::factory()->create(['role' => 'budget']);
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        $this->decide($budget, 'complete')->assertSessionHasNoErrors();
+        $this->decide($planning, 'return', ['comment' => 'Revise the output.'])->assertSessionHasNoErrors();
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        $this->assertSame('pending', $this->document()->budget_review);
+        $this->assertSame('pending', $this->document()->planning_review);
+    }
 }
