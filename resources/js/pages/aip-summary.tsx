@@ -1,3 +1,4 @@
+import AnnualReviewPanel, { type ReviewProps } from '@/components/annual-review-panel';
 import PlanningStages from '@/components/planning-stages';
 import { money } from '@/components/procurement/schedule';
 import AppLayout from '@/layouts/app-layout';
@@ -15,13 +16,13 @@ type Ppa = {
     performance_indicator: string | null;
     physical_target: string | null;
 };
-type Props = {
+type Props = ReviewProps & {
     document: { id: number; title: string; description: string | null; fiscal_year: number; office: { name: string } };
     programs: { id: number; reference: string; title: string; ppas: Ppa[] }[];
     ceiling: number | null;
 };
 
-export default function Summary({ document, programs, ceiling }: Props) {
+export default function Summary({ document, programs, ceiling, history, summaryToken }: Props) {
     const activities = programs.flatMap((p) => p.ppas);
     const allocated = activities.reduce((sum, p) => sum + p.total_cents, 0);
     const procurement = activities.reduce((sum, p) => sum + p.procurement_cents, 0);
@@ -46,6 +47,8 @@ export default function Summary({ document, programs, ceiling }: Props) {
                     <h2 className="font-semibold">{document.title}</h2>
                     {document.description && <p className="mt-1 text-sm whitespace-pre-line">{document.description}</p>}
                 </section>
+                <AnnualReviewPanel key={document.id + '-' + document.revision} document={document} activities={activities}
+                    history={history} summaryToken={summaryToken} />
                 <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
                         ['Office budget', ceiling],
