@@ -56,6 +56,7 @@ class PlanningService
             Office::whereKey($existing?->office_id ?? $data['office_id'])->lockForUpdate()->firstOrFail();
             $officeId = (int) ($existing?->office_id ?? $data['office_id']);
             $year = (int) ($existing?->fiscal_year ?? $data['fiscal_year']);
+            AipDocument::ensureWritable($officeId, $year, ($existing?->type ?? $data['type']) === 'ppmp');
             Budget::where('office_id', $officeId)->where('fiscal_year', $year)->lockForUpdate()->first();
             PpaHierarchy::prepare($user, $data, $existing);
 
