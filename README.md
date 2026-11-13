@@ -58,7 +58,7 @@ Laravel 12 was selected for compatibility with the installed PHP 8.2 runtime. La
 
 ## Planning backend foundation
 
-The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. The Dashboard remains removed; office budget allocation is available to Budget Office and Admin. Login and account-verification flows lead to /aips. AIP submission/review, catalogue management, APP consolidation, and procurement/inventory screens remain future work.
+The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. The Dashboard remains removed; office budget allocation is available to Budget Office and Admin. Login and account-verification flows lead to /aips. Annual AIP submission and review are available on the AIP summary. Catalogue management, APP consolidation, and procurement/inventory screens remain future work.
 
 PHP requires the BCMath and PDO SQLite extensions. After pulling this change into an existing local setup:
 
@@ -330,4 +330,4 @@ CREATE TABLE audit_events (
 
 ### Annual plan entry and review
 
-Use **AIP details** to create or reopen the office's plan for the selected year and save its title and description. Under **PPAs and PPMP**, enter the expected output, performance indicator and physical target for each activity. **Review AIP** lists activities across all program pages with their allocated amounts, saved procurement costs and item-line counts. The office balance includes saved PPMP line costs and manual PS and FE once each. Review is read-only and does not change approval status.
+Use **AIP details** to create or reopen the office's plan for the selected year and save its title and description. Under **PPAs and PPMP**, enter the expected output, performance indicator and physical target for each activity. **Review AIP** lists activities across all program pages with their allocated amounts, saved procurement costs and item-line counts. The office balance includes saved PPMP line costs and manual PS and FE once each. An assigned department account can submit its annual AIP from this summary after adding at least one Sub PPA. Submission records the figures reviewed. MPDC and Budget Office accounts can complete their respective reviews in either order, or return the AIP with a reason and an optional activity reference. The department can revise and resubmit, restarting both reviews. The Mayor can attest once both reviews are complete. Assign the MPDC role in Administration.
