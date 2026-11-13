@@ -20,6 +20,7 @@ class AdministrationController extends Controller
         'admin' => 'System Administrator',
         'office' => 'Department / Office',
         'budget' => 'Budget Office',
+        'mpdc' => 'Municipal Planning and Development Coordinator',
         'mayor' => 'Mayor / Approving Authority',
         'procurement' => 'BAC / Procurement Office',
         'gso' => 'General Services Office',
