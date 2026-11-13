@@ -88,7 +88,8 @@ class PlanningDeletionController extends Controller
             'ppas' => $programs->count(), 'sub_ppas' => $activities->count(), 'ppmps' => $sheets->count(),
             'items' => PlanItem::whereIntegerInRaw('plan_id', $sheets->modelKeys())->count(),
         ];
-        $locked = $activities->concat($sheets)->contains(fn (Plan $p) => ! in_array($p->status, ['draft', 'returned'], true));
+        $annual = $kind === 'aip' ? $target : AipDocument::findOrFail($documentId);
+        $locked = $annual->isReviewLocked() || $activities->concat($sheets)->contains(fn (Plan $p) => ! in_array($p->status, ['draft', 'returned'], true));
         $signature = [$user->id, $kind, $target->id, $target->office_id, $target->fiscal_year, $target->revision ?? $target->version,
             $programs->toArray(), $activities->toArray(), $sheets->toArray(), $counts];
 
@@ -96,7 +97,7 @@ class PlanningDeletionController extends Controller
             'programs' => $programs->modelKeys(), 'activities' => $activities->modelKeys(), 'sheets' => $sheets->modelKeys(),
             'preview' => [
                 'title' => $target->title, 'year' => $target->fiscal_year, 'counts' => $counts,
-                'blocked' => $locked ? 'Submitted or approved records are locked. This selection cannot be deleted.' : null,
+                'blocked' => $locked ? 'The annual AIP or a linked record is locked. This selection cannot be deleted.' : null,
                 'token' => hash_hmac('sha256', json_encode($signature, JSON_THROW_ON_ERROR), config('app.key')),
             ],
         ];
