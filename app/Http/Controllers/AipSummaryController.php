@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\AipDocument;
+use App\Models\AuditEvent;
+use App\Models\Office;
+use App\Services\PlanningService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use App\Services\OfficeBudgetService;
 use App\Services\PlanningAccess;
 use Illuminate\Http\Request;
@@ -17,6 +22,29 @@ class AipSummaryController extends Controller
         PlanningAccess::roles($user, ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory']);
         abort_if($user->role === 'office' && $user->office_id !== $document->office_id, 403);
         $document->load('office:id,name,code');
+        abort_if($user->role === 'mpdc' && $document->review_status === 'draft', 403);
+        $contents = $document->isReviewLocked() ? $document->submitted_snapshot : $this->contents($document);
+        $history = AuditEvent::where('subject_type', 'aip_review')->where('subject_id', $document->id)
+            ->orderByDesc('id')->get()->map(fn ($event) => [
+                'id' => $event->id, 'action' => $event->action, 'comment' => $event->comment,
+                'actor' => $event->metadata['actor'], 'activity' => $event->metadata['activity'] ?? null,
+                'date' => $event->created_at,
+            ]);
+
+        return Inertia::render('aip-summary', [
+            ...$contents, 'document' => $document, 'history' => $history,
+            'summaryToken' => $this->token($document, $contents),
+            'year' => $document->fiscal_year, 'listUrl' => route('aips.documents.show', $document),
+        ]);
+    }
+
+    private function token(AipDocument $document, array $contents): string
+    {
+        return hash('sha256', json_encode([$document->revision, $contents], JSON_THROW_ON_ERROR));
+    }
+
+    private function contents(AipDocument $document): array
+    {
         // Read the complete annual document, independent of the workspace's current page.
         $procurement = OfficeBudgetService::procurementByPpa($document->office_id, $document->fiscal_year);
         $programs = $document->programs()->orderBy('id')->with([
@@ -36,10 +64,6 @@ class AipSummaryController extends Controller
         ])->values();
         $budget = OfficeBudgetService::summary($document->office_id, $document->fiscal_year);
 
-        return Inertia::render('aip-summary', [
-            'document' => $document, 'programs' => $programs,
-            'year' => $document->fiscal_year, 'listUrl' => route('aips.documents.show', $document),
-            'budget' => $budget, 'ceiling' => $budget['ceiling_cents'],
-        ]);
+        return ['programs' => $programs->toArray(), 'budget' => $budget, 'ceiling' => $budget['ceiling_cents']];
     }
 }
