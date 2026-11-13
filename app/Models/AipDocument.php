@@ -8,7 +8,27 @@ class AipDocument extends Model
 {
     protected $guarded = ['id'];
 
-    protected $casts = ['fiscal_year' => 'integer'];
+    protected $hidden = ['submitted_snapshot'];
+
+    protected $casts = [
+        'fiscal_year' => 'integer',
+        'revision' => 'integer',
+        'submitted_snapshot' => 'array',
+    ];
+
+    public function isReviewLocked(): bool
+    {
+        return in_array($this->review_status, ['submitted', 'reviewed', 'attested'], true);
+    }
+
+    public static function ensureWritable(int $officeId, int $year, bool $procurement = false): void
+    {
+        $states = $procurement ? ['submitted', 'reviewed'] : ['submitted', 'reviewed', 'attested'];
+        if (static::where('office_id', $officeId)->where('fiscal_year', $year)
+            ->whereIn('review_status', $states)->exists()) {
+            \App\Services\PlanningService::fail('This annual AIP is locked for review. Open its summary for the current decision.');
+        }
+    }
 
     public function office()
     {
