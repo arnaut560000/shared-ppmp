@@ -91,6 +91,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                             <button
                                 type="button"
                                 className="text-blue-700 underline"
+                                aria-label={(editable ? 'Edit months for ' : 'View months for ') + item.code + ' ' + item.name}
                                 onClick={e => inspect(line, e.currentTarget)}
                             >
                                 {editable ? 'Edit months' : 'View months'}

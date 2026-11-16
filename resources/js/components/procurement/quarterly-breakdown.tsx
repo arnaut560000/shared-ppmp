@@ -61,9 +61,9 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                     </caption>
                     <thead className="bg-blue-50 text-blue-950">
                         <tr>
-                            <th className="p-2">Expense class</th>
+                            <th scope="col" className="p-2">Expense class</th>
                             {[...periods, 'Annual'].map(h => (
-                                <th key={h} className={numberCell}>{h}</th>
+                                <th scope="col" key={h} className={numberCell}>{h}</th>
                             ))}
                         </tr>
                     </thead>
@@ -93,9 +93,9 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                         <table className="w-full text-left" aria-label={label}>
                             <thead>
                                 <tr>
-                                    <th className="p-2">Item</th>
+                                    <th scope="col" className="p-2">Item</th>
                                     {['Unit cost', ...periods, 'Annual'].map(h => (
-                                        <th key={h} className={numberCell}>{h}</th>
+                                        <th scope="col" key={h} className={numberCell}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
