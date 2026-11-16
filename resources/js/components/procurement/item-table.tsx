@@ -67,11 +67,19 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                     </button>
                 )}
             </header>
-            <QuarterlyBreakdown rows={lines.map(line => {
-                const item = items.get(line.catalogue_item_id);
-                if (!item) {
-                    throw new Error('Missing catalogue item ' + line.catalogue_item_id);
-                }
+            {lines.filter(line => !items.has(line.catalogue_item_id)).map(line => (
+                <div key={line.catalogue_item_id} role="alert" className="p-3 text-sm text-amber-900">
+                    Item #{line.catalogue_item_id} is unavailable. Reload the sheet or remove the item to see quarterly totals.
+                    {editable && (
+                        <button type="button" className="ml-2 underline"
+                            onClick={() => onChange(lines.filter(other => other !== line))}>
+                            Remove unavailable item
+                        </button>
+                    )}
+                </div>
+            ))}
+            {lines.every(line => items.has(line.catalogue_item_id)) && <QuarterlyBreakdown rows={lines.map(line => {
+                const item = items.get(line.catalogue_item_id)!;
 
                 return {
                     ...item,
@@ -103,7 +111,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                         </div>
                     ),
                 };
-            })} />
+            })} />}
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent
                     className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto bg-white text-slate-900"
