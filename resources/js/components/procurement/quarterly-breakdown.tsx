@@ -41,6 +41,7 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
         return { code, label, totals, items };
     });
 
+    const grand = periods.map((_, i) => sum(groups.map(group => group.totals[i])));
     const numberCell = 'p-2 text-right whitespace-nowrap tabular-nums';
 
     return (
@@ -61,8 +62,9 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                     <tbody>
                         {[
                             ...groups.map(g => ({ label: g.code, totals: g.totals })),
+                            { label: 'Total PPMP', totals: grand },
                         ].map(({ label, totals }) => (
-                            <tr key={label} className="border-t">
+                            <tr key={label} className="border-t last:bg-blue-50 last:font-bold">
                                 <th scope="row" className="p-2">{label}</th>
                                 {[...totals, sum(totals)].map((value, i) => (
                                     <td key={i} className={numberCell}>{money(value)}</td>
