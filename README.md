@@ -85,6 +85,8 @@ The focused tests cover service permissions, office budget reservations, stale v
 6. Choose **+ Add PPMP** on a PPA to start a new monthly list. Choose **Open PPMP** to revisit its lists. Office users and administrators can prepare lists for draft, returned or approved PPAs. Older quarterly-only lists open read-only.
 7. Select **+ Add item from catalog**, enter monthly quantities, click **Add to PPMP**, then **Save monthly draft**. Saving deducts the item cost from the office balance. Existing lines keep their saved prices and specifications.
 
+On the Monthly PPMP page, the quarterly summary adds MOOE and Capital Outlay costs for Q1 through Q4. The tables below show the quantity and saved unit price for each item. Use **Edit months** and **Apply changes** to update the draft totals, then **Save monthly draft** to record them. Older quarterly-only sheets show their saved quarterly quantities.
+
 To load the FY 2027 Talavera catalogue into a local checkout, run:
 
 ```powershell
