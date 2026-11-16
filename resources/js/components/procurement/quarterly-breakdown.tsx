@@ -19,6 +19,7 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
     }
 
     const groups = classes.map(({ code, label }) => {
+        const totals = [0, 0, 0, 0];
 
         const items = rows.filter(row => row.expense_class === code).map(row => {
             const quantities = row.monthly_quantities?.length === 12
@@ -30,17 +31,48 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
             }
 
             const costs = quantities.map(qty => qty * row.price_cents);
+            costs.forEach((cost, i) => {
+                totals[i] += cost;
+            });
 
             return { row, quantities, costs };
         });
 
-        return { code, label, items };
+        return { code, label, totals, items };
     });
 
     const numberCell = 'p-2 text-right whitespace-nowrap tabular-nums';
 
     return (
         <div className="min-w-0 space-y-5 p-3 text-sm">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                    <caption className="pb-2 text-left font-semibold">
+                        Quarterly budget summary
+                    </caption>
+                    <thead className="bg-blue-50 text-blue-950">
+                        <tr>
+                            <th className="p-2">Expense class</th>
+                            {[...periods, 'Annual'].map(h => (
+                                <th key={h} className={numberCell}>{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {[
+                            ...groups.map(g => ({ label: g.code, totals: g.totals })),
+                        ].map(({ label, totals }) => (
+                            <tr key={label} className="border-t">
+                                <th scope="row" className="p-2">{label}</th>
+                                {[...totals, sum(totals)].map((value, i) => (
+                                    <td key={i} className={numberCell}>{money(value)}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
             {groups.map(({ code, label, items }) => (
                 <section key={code} className="overflow-x-auto rounded-lg border">
                     <h3 className="bg-slate-50 p-3 font-semibold">{label}</h3>
