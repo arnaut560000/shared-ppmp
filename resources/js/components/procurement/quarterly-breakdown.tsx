@@ -18,17 +18,25 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
         return <p className="p-4 text-sm">No items in this list yet.</p>;
     }
 
+    const incomplete = rows.filter(row =>
+        !classes.some(group => group.code === row.expense_class) ||
+        (row.monthly_quantities?.length !== 12 && row.quarterly_quantities?.length !== 4)
+    );
+    if (incomplete.length) {
+        return (
+            <p role="alert" className="p-4 text-sm text-amber-900">
+                Quarterly totals are unavailable. Check the expense class and schedule for {incomplete.map(row => row.code).join(', ')}.
+            </p>
+        );
+    }
+
     const groups = classes.map(({ code, label }) => {
         const totals = [0, 0, 0, 0];
 
         const items = rows.filter(row => row.expense_class === code).map(row => {
             const quantities = row.monthly_quantities?.length === 12
                 ? quarters(row.monthly_quantities)
-                : row.quarterly_quantities;
-
-            if (quantities?.length !== 4) {
-                throw new Error('Invalid schedule for ' + row.code);
-            }
+                : (row.quarterly_quantities ?? []);
 
             const costs = quantities.map(qty => qty * row.price_cents);
             costs.forEach((cost, i) => {
