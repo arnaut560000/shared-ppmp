@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { type SavedItem, money, quarters, sum } from './schedule';
+import { type SavedItem, money, months, quarters, sum } from './schedule';
 
 type Row = Pick<SavedItem,
     'catalogue_item_id' | 'code' | 'name' | 'unit' | 'expense_class' |
@@ -98,6 +98,16 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                                             <strong>{row.code}</strong> · {row.name}
                                             {row.actions}
 
+                                            {!row.actions && row.monthly_quantities?.length === 12 && (
+                                                <details>
+                                                    <summary className="cursor-pointer text-blue-700">
+                                                        View months
+                                                    </summary>
+                                                    {row.monthly_quantities.map((qty, i) => (
+                                                        <div key={i}>{months[i]} · {qty} {row.unit}</div>
+                                                    ))}
+                                                </details>
+                                            )}
                                         </th>
 
                                         <td className={numberCell}>
