@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { type SavedItem, money, quarters } from './schedule';
+import { type SavedItem, money, quarters, sum } from './schedule';
 
 type Row = Pick<SavedItem,
     'catalogue_item_id' | 'code' | 'name' | 'unit' | 'expense_class' |
@@ -49,7 +49,7 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                             <thead>
                                 <tr>
                                     <th className="p-2">Item</th>
-                                    {['Unit cost', ...periods].map(h => (
+                                    {['Unit cost', ...periods, 'Annual'].map(h => (
                                         <th key={h} className={numberCell}>{h}</th>
                                     ))}
                                 </tr>
@@ -76,6 +76,12 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                                             </td>
                                         ))}
 
+                                        <td className={numberCell}>
+                                            <strong>{money(sum(costs))}</strong>
+                                            <div className="text-xs text-slate-600">
+                                                {sum(quantities)} {row.unit}
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
