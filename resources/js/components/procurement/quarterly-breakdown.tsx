@@ -11,7 +11,7 @@ const classes = [
     { code: 'CO', label: 'Capital Outlay (CO)' },
 ] as const;
 
-const periods = ['Q1', 'Q2', 'Q3', 'Q4'];
+const periods = ['Q1 · Jan–Mar', 'Q2 · Apr–Jun', 'Q3 · Jul–Sep', 'Q4 · Oct–Dec'];
 
 export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
     if (!rows.length) {
