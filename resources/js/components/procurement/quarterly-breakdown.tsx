@@ -79,6 +79,9 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                 <section key={code} className="overflow-x-auto rounded-lg border">
                     <h3 className="bg-slate-50 p-3 font-semibold">{label}</h3>
 
+                    {!items.length ? (
+                        <p className="p-3">No {code} items on this sheet.</p>
+                    ) : (
                         <table className="w-full text-left" aria-label={label}>
                             <thead>
                                 <tr>
@@ -120,6 +123,7 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                                 ))}
                             </tbody>
                         </table>
+                    )}
                 </section>
             ))}
         </div>
