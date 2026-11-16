@@ -1,3 +1,4 @@
+import QuarterlyBreakdown from './quarterly-breakdown';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRef, useState } from 'react';
 import MonthlyItem from './monthly-item';
@@ -31,7 +32,6 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
     const pages = Math.max(1, Math.ceil(matches.length / 8));
     const currentPage = Math.min(page, pages);
     const pageItems = matches.slice((currentPage - 1) * 8, currentPage * 8);
-    const total = lines.reduce((amount, line) => amount + sum(line.monthly_quantities) * line.expected_price_cents, 0);
     function openCatalogue(trigger: HTMLButtonElement) {
         opener.current = trigger;
         setSearch('');
@@ -67,71 +67,43 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                     </button>
                 )}
             </header>
-            {lines.length === 0 ? (
-                <p className="p-4 text-sm text-slate-600">No items in this list yet.</p>
-            ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr>
-                                {['Code', 'Item description', 'Unit', 'Quantity', 'Unit cost', 'Total cost', 'Actions'].map((h) => (
-                                    <th key={h} className="p-3">
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {lines.map((line) => {
-                                const item = items.get(line.catalogue_item_id);
-                                if (!item) return null;
-                                const qty = sum(line.monthly_quantities);
-                                return (
-                                    <tr key={item.id} className="border-t">
-                                        <td className="p-3">{item.code}</td>
-                                        <td className="p-3">{item.name}</td>
-                                        <td className="p-3">{item.unit}</td>
-                                        <td className="p-3">{qty}</td>
-                                        <td className="p-3 whitespace-nowrap">{money(item.price_cents)}</td>
-                                        <td className="p-3 whitespace-nowrap">{money(qty * item.price_cents)}</td>
-                                        <td className="p-3">
-                                            <div className="flex gap-3">
-                                                <button
-                                                    type="button"
-                                                    className="text-blue-700 underline"
-                                                    onClick={(e) => inspect(line, e.currentTarget)}
-                                                >
-                                                    {editable ? 'Edit' : 'View'} schedule
-                                                </button>
-                                                {editable && (
-                                                    <button
-                                                        type="button"
-                                                        className="text-red-700 underline"
-                                                        aria-label={'Remove ' + item.name}
-                                                        onClick={() => onChange(lines.filter((row) => row.catalogue_item_id !== item.id))}
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                        <tfoot>
-                            <tr className="border-t font-semibold">
-                                <td colSpan={5} className="p-3 text-right">
-                                    Total estimated cost
-                                </td>
-                                <td colSpan={2} className="p-3">
-                                    {money(total)}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            )}
+            <QuarterlyBreakdown rows={lines.map(line => {
+                const item = items.get(line.catalogue_item_id);
+                if (!item) {
+                    throw new Error('Missing catalogue item ' + line.catalogue_item_id);
+                }
+
+                return {
+                    ...item,
+                    ...line,
+                    price_cents: line.expected_price_cents,
+                    quarterly_quantities: null,
+                    actions: (
+                        <div className="mt-1 flex gap-3">
+                            <button
+                                type="button"
+                                className="text-blue-700 underline"
+                                onClick={e => inspect(line, e.currentTarget)}
+                            >
+                                {editable ? 'Edit months' : 'View months'}
+                            </button>
+
+                            {editable && (
+                                <button
+                                    type="button"
+                                    className="text-red-700 underline"
+                                    aria-label={'Remove ' + item.name}
+                                    onClick={() => onChange(
+                                        lines.filter(other => other.catalogue_item_id !== item.id)
+                                    )}
+                                >
+                                    Remove
+                                </button>
+                            )}
+                        </div>
+                    ),
+                };
+            })} />
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent
                     className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto bg-white text-slate-900"
