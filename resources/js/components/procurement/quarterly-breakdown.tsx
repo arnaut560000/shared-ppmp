@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { type SavedItem, money } from './schedule';
+import { type SavedItem, money, quarters } from './schedule';
 
 type Row = Pick<SavedItem,
     'catalogue_item_id' | 'code' | 'name' | 'unit' | 'expense_class' |
@@ -11,6 +11,7 @@ const classes = [
     { code: 'CO', label: 'Capital Outlay (CO)' },
 ] as const;
 
+const periods = ['Q1', 'Q2', 'Q3', 'Q4'];
 
 export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
     if (!rows.length) {
@@ -20,7 +21,17 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
     const groups = classes.map(({ code, label }) => {
 
         const items = rows.filter(row => row.expense_class === code).map(row => {
-            return { row };
+            const quantities = row.monthly_quantities?.length === 12
+                ? quarters(row.monthly_quantities)
+                : row.quarterly_quantities;
+
+            if (quantities?.length !== 4) {
+                throw new Error('Invalid schedule for ' + row.code);
+            }
+
+            const costs = quantities.map(qty => qty * row.price_cents);
+
+            return { row, quantities, costs };
         });
 
         return { code, label, items };
@@ -38,13 +49,13 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                             <thead>
                                 <tr>
                                     <th className="p-2">Item</th>
-                                    {['Unit cost'].map(h => (
+                                    {['Unit cost', ...periods].map(h => (
                                         <th key={h} className={numberCell}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {items.map(({ row }) => (
+                                {items.map(({ row, quantities, costs }) => (
                                     <tr key={row.catalogue_item_id} className="border-t align-top">
                                         <th scope="row" className="min-w-48 p-2 font-normal">
                                             <strong>{row.code}</strong> · {row.name}
@@ -56,6 +67,14 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                                             {money(row.price_cents)} / {row.unit}
                                         </td>
 
+                                        {quantities.map((qty, i) => (
+                                            <td key={i} className={numberCell}>
+                                                {money(costs[i])}
+                                                <div className="text-xs text-slate-600">
+                                                    {qty} {row.unit}
+                                                </div>
+                                            </td>
+                                        ))}
 
                                     </tr>
                                 ))}
