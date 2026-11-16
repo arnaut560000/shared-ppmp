@@ -1,3 +1,4 @@
+import QuarterlyBreakdown from '@/components/procurement/quarterly-breakdown';
 import AllocationSummary from '@/components/procurement/allocation-summary';
 import PpmpReview from '@/components/procurement/ppmp-review';
 import ItemTable from '@/components/procurement/item-table';
@@ -137,18 +138,7 @@ export default function Ppmp(p: Workspace) {
                 {p.legacy && p.selected ? (
                     <section className="space-y-3">
                         <h2 className="font-semibold">Saved quarterly list · Read only</h2>
-                        {p.selected.items.map((i) => (
-                            <div key={i.catalogue_item_id}>
-                                <p>
-                                    {i.code} — {i.name} · {money(i.price_cents)} / {i.unit}
-                                </p>
-                                <p>
-                                    {(i.quarterly_quantities ?? [])
-                                        .map((q, n) => 'Q' + (n + 1) + ': ' + q + ' (' + money(q * i.price_cents) + ')')
-                                        .join(' · ')}
-                                </p>
-                            </div>
-                        ))}
+                        <QuarterlyBreakdown rows={p.selected.items} />
                     </section>
                 ) : p.selected || p.canEdit ? (
                     <Editor key={[p.ppa.id, p.selected?.id ?? 'new', p.selected?.version ?? 0].join('-')} {...p} />
