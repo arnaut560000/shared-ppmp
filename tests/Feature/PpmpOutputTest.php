@@ -61,4 +61,15 @@ class PpmpOutputTest extends PpaTestCase
         $this->assertEquals($this->sheet->total_cents / 100, $page->getCell('Z18')->getCalculatedValue());
         $this->assertSame('landscape', $page->getPageSetup()->getOrientation());
     }
+
+    public function test_quarterly_only_rows_keep_months_blank(): void
+    {
+        $this->sheet->items()->where('code', 'A-1')->update(['monthly_quantities' => null]);
+        $page = $this->download();
+        $this->assertNull($page->getCell('E13')->getValue());
+        $this->assertEquals(2, $page->getCell('H13')->getValue());
+        $this->assertEquals(3, $page->getCell('L13')->getValue());
+        $this->assertStringContainsString('Monthly breakdown unavailable', $page->getCell('B13')->getValue());
+        $this->assertEquals(365, $page->getCell('C8')->getCalculatedValue());
+    }
 }
