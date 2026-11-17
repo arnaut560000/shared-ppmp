@@ -72,4 +72,16 @@ class PpmpOutputTest extends PpaTestCase
         $this->assertStringContainsString('Monthly breakdown unavailable', $page->getCell('B13')->getValue());
         $this->assertEquals(365, $page->getCell('C8')->getCalculatedValue());
     }
+
+    public function test_both_outputs_require_access_to_the_parent_and_the_sheet(): void
+    {
+        $other = $this->child(['reference' => 'SECOND']);
+        $office = Office::create(['code' => 'ENG', 'name' => 'Engineering']);
+        $outsider = User::factory()->create(['role' => 'office', 'office_id' => $office->id]);
+        foreach (['preview', 'xlsx'] as $format) {
+            $this->actingAs($outsider)->get($this->url.$format)->assertForbidden();
+            $this->actingAs($this->planner)->get("/aips/{$other->id}/ppmp/{$this->sheet->id}/output/{$format}")->assertNotFound();
+        }
+        $this->actingAs(User::factory()->create(['role' => 'gso']))->get($this->url.'preview')->assertOk();
+    }
 }
