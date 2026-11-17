@@ -180,6 +180,7 @@ export default function Ppmp(p: Workspace) {
                 {p.legacy && p.selected ? (
                     <section className="space-y-3">
                         <h2 className="font-semibold">Saved quarterly list · Read only</h2>
+                        <PpmpOutputButtons workspace={p} />
                         <QuarterlyBreakdown rows={p.selected.items} />
                     </section>
                 ) : p.selected || p.canEdit ? (
