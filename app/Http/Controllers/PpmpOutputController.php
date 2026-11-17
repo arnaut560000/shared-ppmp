@@ -24,6 +24,10 @@ class PpmpOutputController extends Controller
                 ->with(['items' => fn ($query) => $query->orderBy('id')])
                 ->findOrFail($sheet);
         });
+        if ($request->has('version') && $request->integer('version') !== $ppmp->version) {
+            abort(409, 'This PPMP has changed. Reload the sheet before opening the output.');
+        }
+
         $book = $workbooks->build($ppa, $ppmp);
         if ($format === 'preview') {
             try {
