@@ -21,6 +21,13 @@ class PlanningAccess
         );
     }
 
+    public static function viewPpmpWorkspace(User $user, Plan $ppa): void
+    {
+        self::roles($user, ['admin', 'office', 'budget', 'mayor', 'gso', 'procurement', 'inventory']);
+        self::view($user, $ppa);
+        abort_unless($ppa->type === 'aip' && $ppa->parent_ppa_id !== null, 404);
+    }
+
     public static function edit(User $user, Plan $plan): void
     {
         self::roles($user, ['office', 'admin']);

@@ -60,9 +60,7 @@ class PpmpController extends Controller
     public function show(Request $request, Plan $ppa): Response
     {
         $user = $request->user();
-        PlanningAccess::roles($user, ['admin', 'office', 'budget', 'mayor', 'gso', 'procurement', 'inventory']);
-        PlanningAccess::view($user, $ppa);
-        abort_unless($ppa->type === 'aip' && $ppa->parent_ppa_id !== null, 404);
+        PlanningAccess::viewPpmpWorkspace($user, $ppa);
         $request->validate(['sheet' => ['nullable', 'integer', 'min:1'], 'new' => ['nullable', 'boolean']]);
 
         $query = $ppa->procurementLists()->where('office_id', $ppa->office_id)->where('fiscal_year', $ppa->fiscal_year);
