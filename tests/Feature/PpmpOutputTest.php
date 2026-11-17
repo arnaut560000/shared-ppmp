@@ -92,4 +92,12 @@ class PpmpOutputTest extends PpaTestCase
         $this->sheet->items()->delete();
         $this->get($this->url.'xlsx')->assertStatus(409);
     }
+
+    public function test_preview_shows_the_saved_totals_and_print_actions(): void
+    {
+        $this->get($this->url.'preview')->assertOk()
+            ->assertSee('Print PPMP')->assertSee('Download Excel')
+            ->assertSee('365.00')->assertSee('ICT Office')
+            ->assertSee('=Example &lt;item&gt;', false)->assertDontSee('=Example <item>', false);
+    }
 }
