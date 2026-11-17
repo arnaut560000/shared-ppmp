@@ -14,8 +14,19 @@
         nav a { color: #174a88; }
         main { padding: 1rem; overflow: auto; }
         table.sheet0 { background: white; margin: auto; border-collapse: collapse; }
-        @page { size: A4 landscape; margin: 8mm; }
-        @media print { nav { display: none; } }
+        @page page0 { size: A4 landscape; margin: 8mm; }
+        @media print {
+            nav { display: none; }
+            body, main { margin: 0; padding: 0; background: white; overflow: visible; }
+            table.sheet0 { width: 100% !important; table-layout: fixed; page-break-inside: auto; }
+            table.sheet0 col { width: 3% !important; }
+            table.sheet0 col:nth-child(1) { width: 5% !important; }
+            table.sheet0 col:nth-child(2) { width: 15% !important; }
+            table.sheet0 col:nth-child(4), table.sheet0 col:nth-last-child(-n+5) { width: 5% !important; }
+            table.sheet0 tr { height: auto !important; break-inside: avoid; }
+            table.sheet0 td, table.sheet0 th { width: auto !important; height: auto !important; font-size: 6.5pt !important; white-space: normal; overflow-wrap: anywhere; }
+            thead { display: table-header-group; }
+        }
     </style>
 </head>
 <body>
