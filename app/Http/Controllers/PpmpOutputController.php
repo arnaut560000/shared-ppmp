@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Services\PlanningAccess;
 use App\Services\PpmpWorkbook;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Writer\Html;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,12 +17,13 @@ class PpmpOutputController extends Controller
     {
         PlanningAccess::viewPpmpWorkspace($request->user(), $ppa);
 
-        $ppmp = $ppa->procurementLists()
-            ->where('office_id', $ppa->office_id)
-            ->where('fiscal_year', $ppa->fiscal_year)
-            ->with(['items' => fn ($query) => $query->orderBy('id')])
-            ->findOrFail($sheet);
-
+        $ppmp = DB::transaction(function () use ($ppa, $sheet) {
+            return $ppa->procurementLists()
+                ->where('office_id', $ppa->office_id)
+                ->where('fiscal_year', $ppa->fiscal_year)
+                ->with(['items' => fn ($query) => $query->orderBy('id')])
+                ->findOrFail($sheet);
+        });
         $book = $workbooks->build($ppa, $ppmp);
         if ($format === 'preview') {
             try {
