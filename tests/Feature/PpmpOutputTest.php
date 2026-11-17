@@ -84,4 +84,12 @@ class PpmpOutputTest extends PpaTestCase
         }
         $this->actingAs(User::factory()->create(['role' => 'gso']))->get($this->url.'preview')->assertOk();
     }
+
+    public function test_stale_versions_and_empty_sheets_do_not_export(): void
+    {
+        $this->get($this->url.'preview?version=0')->assertStatus(409);
+        $this->get($this->url.'xlsx?version=0')->assertStatus(409);
+        $this->sheet->items()->delete();
+        $this->get($this->url.'xlsx')->assertStatus(409);
+    }
 }
