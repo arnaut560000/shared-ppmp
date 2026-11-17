@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Services\PlanningAccess;
 use App\Services\PpmpWorkbook;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Writer\Html;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,6 +23,29 @@ class PpmpOutputController extends Controller
             ->findOrFail($sheet);
 
         $book = $workbooks->build($ppa, $ppmp);
+        if ($format === 'preview') {
+            try {
+                $writer = new Html($book);
+                $writer->setGenerateSheetNavigationBlock(false);
+                $nonce = bin2hex(random_bytes(16));
+
+                return response()->view('ppmp-preview', [
+                    'nonce' => $nonce,
+                    'reference' => $ppmp->reference,
+                    'styles' => $writer->generateStyles(false),
+                    'table' => $writer->generateSheetData(),
+                    'download' => route('ppmp.output', [
+                        'ppa' => $ppa, 'sheet' => $sheet, 'format' => 'xlsx', 'version' => $ppmp->version,
+                    ]),
+                ], 200, [
+                    'Cache-Control' => 'private, no-store',
+                    'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-{$nonce}'; base-uri 'none'; frame-ancestors 'self'",
+                ]);
+            } finally {
+                $book->disconnectWorksheets();
+            }
+        }
+
         return response()->streamDownload(function () use ($book): void {
             try {
                 (new Xlsx($book))->save('php://output');
