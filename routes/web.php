@@ -23,6 +23,8 @@ Route::middleware(['auth'])->group(function () {
     Route::put('aips/documents/{document}', [AipDocumentController::class, 'update'])->name('aips.documents.update');
     Route::get('aips/documents/{document}/summary', AipSummaryController::class)->name('aips.documents.summary');
     Route::get('aips/{ppa}/ppmp', [PpmpController::class, 'show'])->name('ppmp.show');
+    Route::get('aips/{ppa}/ppmp/{sheet}/output/{format}', \App\Http\Controllers\PpmpOutputController::class)
+        ->whereNumber('sheet')->whereIn('format', ['preview', 'xlsx'])->name('ppmp.output');
     Route::get('ppmp-reviews', [PpmpController::class, 'index'])->name('ppmp.reviews');
     Route::post('aips/{ppa}/ppmp/{ppmp}/review', [PpmpController::class, 'review'])->name('ppmp.review');
     Route::get('my-ppmps', [PpmpController::class, 'index'])->name('ppmp.index');
