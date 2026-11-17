@@ -87,6 +87,8 @@ The focused tests cover service permissions, office budget reservations, stale v
 
 On the Monthly PPMP page, the quarterly summary adds MOOE and Capital Outlay costs for Q1 through Q4. The tables below show the quantity and saved unit price for each item. Use **Edit months** and **Apply changes** to update the draft totals, then **Save monthly draft** to record them. Older quarterly-only sheets show their saved quarterly quantities.
 
+Open a saved sheet under **My PPMPs** and select **Preview PPMP** to print or **Download Excel** for the workbook. Save pending changes first. Both outputs use the recorded unit prices. Older quarterly sheets leave unavailable months blank. Run `composer install` after pulling this feature on another PC.
+
 To load the FY 2027 Talavera catalogue into a local checkout, run:
 
 ```powershell
