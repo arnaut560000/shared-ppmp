@@ -10,6 +10,37 @@ import { useEffect } from 'react';
 const button = 'rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white disabled:opacity-50';
 const field = 'rounded-lg border bg-background px-3 py-2';
 
+function PpmpOutputButtons({
+    workspace,
+}: {
+    workspace: Workspace;
+}) {
+    const sheet = workspace.selected;
+    if (!sheet || sheet.items.length === 0) return null;
+
+    const base = `/aips/${workspace.ppa.id}/ppmp/${sheet.id}/output`;
+    const version = `?version=${sheet.version}`;
+
+    return (
+        <div className="flex flex-wrap items-center gap-3">
+            <a
+                href={`${base}/preview${version}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg border border-blue-700 px-4 py-2 text-sm font-semibold text-blue-700"
+            >
+                Preview PPMP
+            </a>
+            <a
+                href={`${base}/xlsx${version}`}
+                className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+            >
+                Download Excel
+            </a>
+        </div>
+    );
+}
+
 function Editor(p: Workspace) {
     const form = useForm({
         reference: p.reference,
@@ -85,6 +116,7 @@ function Editor(p: Workspace) {
                 </button>
             )}
         </form>
+        <PpmpOutputButtons workspace={p} />
         {p.selected && <PpmpReview workspace={p} sheet={p.selected} unsaved={form.isDirty || form.processing} />}
         </>
     );
