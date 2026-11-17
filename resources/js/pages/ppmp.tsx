@@ -12,11 +12,21 @@ const field = 'rounded-lg border bg-background px-3 py-2';
 
 function PpmpOutputButtons({
     workspace,
+    unsaved = false,
 }: {
     workspace: Workspace;
+    unsaved?: boolean;
 }) {
     const sheet = workspace.selected;
     if (!sheet || sheet.items.length === 0) return null;
+
+    if (unsaved) {
+        return (
+            <p className="text-sm text-slate-600">
+                Save your draft to preview or download the updated PPMP.
+            </p>
+        );
+    }
 
     const base = `/aips/${workspace.ppa.id}/ppmp/${sheet.id}/output`;
     const version = `?version=${sheet.version}`;
@@ -116,7 +126,7 @@ function Editor(p: Workspace) {
                 </button>
             )}
         </form>
-        <PpmpOutputButtons workspace={p} />
+        <PpmpOutputButtons workspace={p} unsaved={form.isDirty || form.processing} />
         {p.selected && <PpmpReview workspace={p} sheet={p.selected} unsaved={form.isDirty || form.processing} />}
         </>
     );
