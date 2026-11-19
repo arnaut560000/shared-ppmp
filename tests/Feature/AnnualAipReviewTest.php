@@ -157,6 +157,8 @@ class AnnualAipReviewTest extends PpaTestCase
                 ->where('preparationLockedReason', 'The Mayor has attested this AIP. Its PPMP items and costs are locked.'));
             $this->post($url, [...$payload, 'reference' => 'EXTRA'])->assertSessionHasErrors('workflow');
             $this->put($url.'/'.$sheet->id, [...$changed, 'version' => 1])->assertSessionHasErrors('workflow');
+            $this->put($url.'/'.$sheet->id, ['reference' => 'PPMP-001', 'version' => 1, 'items' => []])
+                ->assertSessionHasErrors('workflow');
         }
         $this->assertSame(20000, $sheet->fresh()->total_cents);
     }
