@@ -27,6 +27,9 @@ export default function AnnualReviewPanel({ document, activities, summaryToken, 
     const pending = (role === 'mpdc' ? document.planning_review : document.budget_review) === 'pending';
     const waitingForPlanning = state === 'submitted' && document.planning_review !== 'complete';
     const canReview = reviewer && state === 'submitted' && pending && (role !== 'budget' || !waitingForPlanning);
+    const status = state === 'submitted'
+        ? (waitingForPlanning ? 'Awaiting MPDC review' : 'Awaiting Budget review')
+        : labels[state];
     function send(action: 'submit' | 'complete' | 'return' | 'attest') {
         form.transform((data) => ({
             action, revision: document.revision, summaryToken,
@@ -38,7 +41,7 @@ export default function AnnualReviewPanel({ document, activities, summaryToken, 
 
     return (
         <section aria-label="Annual AIP review" className="space-y-3 rounded-xl border bg-white p-5 shadow-sm">
-            <h2 className="font-semibold">Annual AIP review · {labels[state]}</h2>
+            <h2 className="font-semibold">Annual AIP review · {status}</h2>
             {state !== 'draft' && <p className="text-sm capitalize">Planning review: {document.planning_review} · Budget review: {document.budget_review}</p>}
             {['submitted', 'reviewed', 'attested'].includes(state) && <p className="text-sm">The figures below are from the submitted AIP.</p>}
             {role === 'office' && (state === 'draft' || state === 'returned') && (
