@@ -100,6 +100,10 @@ class AipSummaryController extends Controller
                     $activity = $row->reference.' · '.$row->title;
                 }
                 $annual->$field = $action === 'return' ? 'returned' : 'complete';
+                if ($user->role === 'mpdc' && $action === 'complete') {
+                    // A budget review recorded before planning must be performed again.
+                    $annual->budget_review = 'pending';
+                }
                 if ($action === 'return') {
                     $annual->review_status = 'returned';
                 } elseif ($annual->planning_review === 'complete' && $annual->budget_review === 'complete') {
