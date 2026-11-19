@@ -12,7 +12,8 @@ class ConsolidatedPpmpReport
         User $user,
         int $year,
         ?int $officeId = null,
-        ?string $fund = null
+        ?string $fund = null,
+        bool $consolidatePrices = false
     ): array {
         PlanningAccess::roles($user, [
             'admin',
@@ -49,21 +50,22 @@ class ConsolidatedPpmpReport
                 $fund,
                 fn ($q) => $q->where('fund_source', $fund)
             )
-            ->with('items')
+            ->with($consolidatePrices ? ['items', 'parent.parentPpa'] : ['items'])
+            ->orderBy('id')
             ->get();
         $rows = [];
         $totals = array_fill_keys($offices->pluck('id')->all(), 0);
 
         foreach ($plans as $plan) {
             foreach ($plan->items as $item) {
-                // Different saved prices/specifications remain separate rows.
+                // Keep different specifications, units and expense classes separate.
                 $identity = [
                     $item->catalogue_item_id,
                     $item->code,
                     $item->name,
                     $item->specification,
                     $item->unit,
-                    $item->price_cents,
+                    $consolidatePrices ? null : $item->price_cents,
                     $item->expense_class,
                     $item->object_of_expenditure,
                 ];
@@ -84,6 +86,40 @@ class ConsolidatedPpmpReport
                     'price_cents' => $item->price_cents,
                     'offices' => [],
                 ];
+
+                if ($consolidatePrices) {
+                    $row = &$rows[$key];
+                    $row['expense_class'] = $item->expense_class;
+                    $row['quantities'] ??= [0, 0, 0, 0];
+                    $row['amounts'] ??= [0, 0, 0, 0];
+                    $row['sources'] ??= [];
+
+                    if ($row['price_cents'] !== $item->price_cents) {
+                        $row['price_cents'] = null;
+                    }
+
+                    $quarters = $item->quarterly_quantities;
+                    $costs = [];
+
+                    foreach ($quarters as $quarter => $quantity) {
+                        $costs[$quarter] = $quantity * $item->price_cents;
+                        $row['quantities'][$quarter] += $quantity;
+                        $row['amounts'][$quarter] += $costs[$quarter];
+                    }
+
+                    $row['sources'][] = [
+                        'sheet_id' => $plan->id,
+                        'reference' => $plan->reference,
+                        'office_id' => $plan->office_id,
+                        'ppa' => $plan->parent?->parentPpa?->title,
+                        'activity' => $plan->parent?->title,
+                        'price_cents' => $item->price_cents,
+                        'quantities' => $quarters,
+                        'amounts' => $costs,
+                    ];
+
+                    unset($row);
+                }
 
                 $rows[$key]['offices'][$plan->office_id] ??= [
                     'quantities' => [0, 0, 0, 0],
