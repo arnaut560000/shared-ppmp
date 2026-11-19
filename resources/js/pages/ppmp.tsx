@@ -172,6 +172,9 @@ export default function Ppmp(p: Workspace) {
                         </Link>
                     )}
                 </nav>
+                {p.preparationLockedReason && (
+                    <p role="status" className="rounded bg-blue-50 p-3 text-blue-950">{p.preparationLockedReason}</p>
+                )}
                 {p.message && (
                     <p role="status" className="rounded bg-blue-50 p-3 text-blue-950">
                         {p.message}
