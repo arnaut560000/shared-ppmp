@@ -68,8 +68,8 @@ class AnnualAipReviewTest extends PpaTestCase
         $planning = User::factory()->create(['role' => 'mpdc']);
         $budget = User::factory()->create(['role' => 'budget']);
         $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
-        $this->decide($budget, 'complete')->assertSessionHasNoErrors();
-        $this->decide($planning, 'return', ['comment' => 'Revise the output.'])->assertSessionHasNoErrors();
+        $this->decide($planning, 'complete')->assertSessionHasNoErrors();
+        $this->decide($budget, 'return', ['comment' => 'Revise the output.'])->assertSessionHasNoErrors();
         $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
         $this->assertSame('pending', $this->document()->budget_review);
         $this->assertSame('pending', $this->document()->planning_review);
