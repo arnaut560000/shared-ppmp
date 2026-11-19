@@ -149,6 +149,7 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->decide(User::factory()->create(['role' => 'mpdc']), 'complete')->assertSessionHasNoErrors();
         $this->decide(User::factory()->create(['role' => 'budget']), 'complete')->assertSessionHasNoErrors();
         $this->decide(User::factory()->create(['role' => 'mayor']), 'attest')->assertSessionHasNoErrors();
+        $snapshot = $this->document()->submitted_snapshot;
         $changed = $payload;
         $changed['items'][0]['monthly_quantities'][0] = 5;
         foreach ([$this->planner, User::factory()->create(['role' => 'admin'])] as $user) {
@@ -161,6 +162,9 @@ class AnnualAipReviewTest extends PpaTestCase
                 ->assertSessionHasErrors('workflow');
         }
         $this->assertSame(20000, $sheet->fresh()->total_cents);
+        $this->assertSame(1, $sheet->fresh()->version);
+        $this->assertSame(1, $activity->procurementLists()->count());
+        $this->assertSame($snapshot, $this->document()->submitted_snapshot);
     }
 
 }
