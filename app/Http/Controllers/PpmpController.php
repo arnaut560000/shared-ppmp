@@ -107,6 +107,9 @@ class PpmpController extends Controller
                 ->where('office_id', $sheet->office_id)->whereIn('action', ['submit_to_gso', 'complete_gso_review', 'return_from_gso'])
                 ->latest('id')->get(['id', 'action', 'comment', 'created_at']) : [],
             'canPrepare' => $canPrepare,
+            'preparationLockedReason' => $ppa->aipDocument?->review_status === 'attested'
+                ? 'The Mayor has attested this AIP. Its PPMP items and costs are locked.'
+                : null,
             'canEdit' => $canPrepare && ! $legacy && (! $sheet || in_array($sheet->status, ['draft', 'returned'], true)),
             'legacy' => (bool) $legacy,
             'message' => $request->session()->get('success'),

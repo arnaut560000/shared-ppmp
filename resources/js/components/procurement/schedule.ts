@@ -36,6 +36,7 @@ export type Workspace = {
     canReviewForGso: boolean;
     reviewHistory: { id: number; action: ReviewAction; comment: string | null; created_at: string }[];
     canPrepare: boolean;
+    preparationLockedReason: string | null;
     canEdit: boolean;
     legacy: boolean;
     message: string | null;
