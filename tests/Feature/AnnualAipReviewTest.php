@@ -165,6 +165,17 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->assertSame(1, $sheet->fresh()->version);
         $this->assertSame(1, $activity->procurementLists()->count());
         $this->assertSame($snapshot, $this->document()->submitted_snapshot);
+        $this->actingAs($this->planner)->get('/aips?year=2027')
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->where('plans.data.0.children.0.can_prepare_ppmp', false));
+        $this->get($url)->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page->where('canSubmitToGso', true));
+        $this->post($url.'/'.$sheet->id.'/review', ['action' => 'submit_to_gso', 'version' => 1])
+            ->assertSessionHasNoErrors();
+        $this->actingAs(User::factory()->create(['role' => 'gso']))
+            ->post($url.'/'.$sheet->id.'/review', ['action' => 'complete_gso_review', 'version' => 2])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('submitted', $sheet->fresh()->status);
+        $this->assertSame(20000, $sheet->fresh()->total_cents);
     }
 
 }
