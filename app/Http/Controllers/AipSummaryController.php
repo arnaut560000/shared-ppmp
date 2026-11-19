@@ -89,6 +89,9 @@ class AipSummaryController extends Controller
                 if ($annual->review_status !== 'submitted' || $annual->$field !== 'pending') {
                     PlanningService::fail('This review is no longer pending.');
                 }
+                if ($user->role === 'budget' && $annual->planning_review !== 'complete') {
+                    PlanningService::fail('MPDC must complete the planning review before Budget Office can review this AIP.');
+                }
                 if (isset($data['activity_id'])) {
                     $row = $annual->ppas()->whereKey($data['activity_id'])->first();
                     if (! $row || $action !== 'return') {
