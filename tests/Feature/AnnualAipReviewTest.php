@@ -151,7 +151,7 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->decide(User::factory()->create(['role' => 'mayor']), 'attest')->assertSessionHasNoErrors();
         $changed = $payload;
         $changed['items'][0]['monthly_quantities'][0] = 5;
-        foreach ([$this->planner] as $user) {
+        foreach ([$this->planner, User::factory()->create(['role' => 'admin'])] as $user) {
             $this->actingAs($user)->get($url)->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
                 ->where('canEdit', false)->where('canPrepare', false)
                 ->where('preparationLockedReason', 'The Mayor has attested this AIP. Its PPMP items and costs are locked.'));
