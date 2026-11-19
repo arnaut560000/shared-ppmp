@@ -15,7 +15,7 @@ export type ReviewProps = { document: Annual; summaryToken: string; history: Ent
 
 const labels = {
     draft: 'Draft', submitted: 'Under review', returned: 'Returned for revision',
-    reviewed: 'Ready for attestation', attested: 'Attested',
+    reviewed: 'Awaiting Mayor’s attestation', attested: 'Attested',
 };
 const button = 'rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
 
