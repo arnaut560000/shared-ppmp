@@ -128,4 +128,36 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->decide($mayor, 'attest')->assertSessionHasNoErrors();
     }
 
+    public function test_attestation_freezes_ppmp_costs_while_allowing_status_review(): void
+    {
+        $activity = $this->child();
+        $item = \App\Models\CatalogueItem::create([
+            'code' => 'A4', 'name' => 'Paper', 'unit' => 'ream', 'category' => 'Supplies',
+            'expense_class' => 'MOOE', 'price_cents' => 20000, 'active' => true,
+        ]);
+        $url = '/aips/'.$activity->id.'/ppmp';
+        $payload = [
+            'reference' => 'PPMP-001',
+            'items' => [[
+                'catalogue_item_id' => $item->id, 'expected_price_cents' => 20000,
+                'monthly_quantities' => [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ]],
+        ];
+        $this->post($url, $payload)->assertSessionHasNoErrors();
+        $sheet = $activity->procurementLists()->sole();
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        $this->decide(User::factory()->create(['role' => 'mpdc']), 'complete')->assertSessionHasNoErrors();
+        $this->decide(User::factory()->create(['role' => 'budget']), 'complete')->assertSessionHasNoErrors();
+        $this->decide(User::factory()->create(['role' => 'mayor']), 'attest')->assertSessionHasNoErrors();
+        $changed = $payload;
+        $changed['items'][0]['monthly_quantities'][0] = 5;
+        foreach ([$this->planner] as $user) {
+            $this->actingAs($user)->get($url)->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->where('canEdit', false)->where('canPrepare', false)
+                ->where('preparationLockedReason', 'The Mayor has attested this AIP. Its PPMP items and costs are locked.'));
+            $this->put($url.'/'.$sheet->id, [...$changed, 'version' => 1])->assertSessionHasErrors('workflow');
+        }
+        $this->assertSame(20000, $sheet->fresh()->total_cents);
+    }
+
 }
