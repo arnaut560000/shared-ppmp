@@ -69,7 +69,7 @@ class PpmpController extends Controller
         $sheet = $sheetId ? (clone $query)->with('items')->whereKey($sheetId)->firstOrFail() : null;
         $legacy = $sheet && $sheet->items->contains(fn ($item) => count($item->monthly_quantities ?? []) !== 12);
         $canPrepare = in_array($user->role, ['office', 'admin'], true) && $ppa->permitsProcurementDrafts()
-            && ! in_array($ppa->aipDocument?->review_status, ['submitted', 'reviewed'], true);
+            && ! ($ppa->aipDocument?->isReviewLocked() ?? false);
         $budget = OfficeBudgetService::summary($ppa->office_id, $ppa->fiscal_year);
         $available = $budget['remaining_cents'] === null ? null
             : $budget['remaining_cents'] + (int) ($sheet?->items->sum('total_cents') ?? 0);
