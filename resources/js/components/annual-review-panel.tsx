@@ -49,6 +49,9 @@ export default function AnnualReviewPanel({ document, activities, summaryToken, 
                     {state === 'returned' ? 'Resubmit AIP for Review' : 'Submit AIP for Review'}
                 </button>
             )}
+            {role === 'budget' && waitingForPlanning && (
+                <p className="text-sm text-blue-950">Budget review becomes available after MPDC completes the planning review.</p>
+            )}
             {canReview && (
                 <div className="space-y-3">
                     <label className="block text-sm">Activity to revise
