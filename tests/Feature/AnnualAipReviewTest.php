@@ -89,4 +89,20 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->decide($mayor, 'attest')->assertSessionHasNoErrors();
         $this->assertSame('attested', $this->document()->review_status);
     }
+
+    public function test_budget_cannot_review_before_mpdc_and_failed_actions_leave_no_changes(): void
+    {
+        $this->child();
+        $budget = User::factory()->create(['role' => 'budget']);
+        $planning = User::factory()->create(['role' => 'mpdc']);
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        foreach (['complete', 'return'] as $action) {
+            $this->decide($budget, $action, ['comment' => 'Budget correction.'])
+                ->assertSessionHasErrors('workflow');
+        }
+        $this->decide($planning, 'complete')->assertSessionHasNoErrors();
+        $this->decide($budget, 'complete')->assertSessionHasNoErrors();
+        $this->assertSame('reviewed', $this->document()->review_status);
+    }
+
 }
