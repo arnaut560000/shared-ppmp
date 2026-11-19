@@ -155,6 +155,7 @@ class AnnualAipReviewTest extends PpaTestCase
             $this->actingAs($user)->get($url)->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
                 ->where('canEdit', false)->where('canPrepare', false)
                 ->where('preparationLockedReason', 'The Mayor has attested this AIP. Its PPMP items and costs are locked.'));
+            $this->post($url, [...$payload, 'reference' => 'EXTRA'])->assertSessionHasErrors('workflow');
             $this->put($url.'/'.$sheet->id, [...$changed, 'version' => 1])->assertSessionHasErrors('workflow');
         }
         $this->assertSame(20000, $sheet->fresh()->total_cents);
