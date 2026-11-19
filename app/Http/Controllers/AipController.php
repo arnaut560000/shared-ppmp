@@ -263,7 +263,7 @@ class AipController extends Controller
         abort_if($user->role === 'mpdc' && (! $document->exists || $document->review_status === 'draft'), 403);
         $writer = in_array($user->role, ['admin', 'office'], true);
         $canWrite = $writer && ! $document->isReviewLocked();
-        $canPrepare = $writer && ! in_array($document->review_status, ['submitted', 'reviewed'], true);
+        $canPrepare = $canWrite;
         $readOnly = $readOnly || ! $canWrite;
         $program ??= $editing?->parentPpa;
 
