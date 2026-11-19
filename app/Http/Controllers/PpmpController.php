@@ -98,7 +98,9 @@ class PpmpController extends Controller
             'available' => ['MOOE' => $available ?? 0, 'CO' => $available ?? 0],
             'catalogue' => CatalogueItem::where('active', true)->whereIn('expense_class', ['MOOE', 'CO'])
                 ->orderBy('name')->get(['id', 'code', 'name', 'specification', 'unit', 'category', 'expense_class', 'price_cents']),
-            'canSubmitToGso' => $user->role === 'office' && $canPrepare && ! $legacy && $sheet
+            'canSubmitToGso' => $user->role === 'office' && $ppa->permitsProcurementDrafts()
+                && ! in_array($ppa->aipDocument?->review_status, ['submitted', 'reviewed'], true)
+                && ! $legacy && $sheet
                 && in_array($sheet->status, ['draft', 'returned'], true) && $sheet->items->isNotEmpty(),
             'canReviewForGso' => $user->role === 'gso' && $sheet?->status === 'pending_gso' && $sheet->created_by !== $user->id,
             'reviewHistory' => $sheet ? AuditEvent::where('subject_type', 'plan')->where('subject_id', $sheet->id)
