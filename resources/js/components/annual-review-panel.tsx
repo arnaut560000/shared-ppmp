@@ -25,6 +25,8 @@ export default function AnnualReviewPanel({ document, activities, summaryToken, 
     const state = document.review_status;
     const reviewer = role === 'mpdc' || role === 'budget';
     const pending = (role === 'mpdc' ? document.planning_review : document.budget_review) === 'pending';
+    const waitingForPlanning = state === 'submitted' && document.planning_review !== 'complete';
+    const canReview = reviewer && state === 'submitted' && pending && (role !== 'budget' || !waitingForPlanning);
     function send(action: 'submit' | 'complete' | 'return' | 'attest') {
         form.transform((data) => ({
             action, revision: document.revision, summaryToken,
@@ -44,7 +46,7 @@ export default function AnnualReviewPanel({ document, activities, summaryToken, 
                     {state === 'returned' ? 'Resubmit AIP for Review' : 'Submit AIP for Review'}
                 </button>
             )}
-            {reviewer && state === 'submitted' && pending && (
+            {canReview && (
                 <div className="space-y-3">
                     <label className="block text-sm">Activity to revise
                         <select className="mt-1 block w-full rounded border p-2" value={form.data.activity_id}
