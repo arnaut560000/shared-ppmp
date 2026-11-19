@@ -111,4 +111,21 @@ class AnnualAipReviewTest extends PpaTestCase
         $this->assertSame('reviewed', $this->document()->review_status);
     }
 
+    public function test_earlier_budget_first_records_require_budget_review_after_planning(): void
+    {
+        $this->child();
+        $planning = User::factory()->create(['role' => 'mpdc']);
+        $budget = User::factory()->create(['role' => 'budget']);
+        $mayor = User::factory()->create(['role' => 'mayor']);
+        $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        // A pending record saved before review order was enforced.
+        $this->document()->update(['budget_review' => 'complete']);
+        $this->decide($planning, 'complete')->assertSessionHasNoErrors();
+        $this->assertSame('submitted', $this->document()->review_status);
+        $this->assertSame('pending', $this->document()->budget_review);
+        $this->decide($mayor, 'attest')->assertSessionHasErrors('workflow');
+        $this->decide($budget, 'complete')->assertSessionHasNoErrors();
+        $this->decide($mayor, 'attest')->assertSessionHasNoErrors();
+    }
+
 }
