@@ -96,9 +96,15 @@ class AnnualAipReviewTest extends PpaTestCase
         $budget = User::factory()->create(['role' => 'budget']);
         $planning = User::factory()->create(['role' => 'mpdc']);
         $this->decide($this->planner, 'submit')->assertSessionHasNoErrors();
+        $revision = $this->document()->revision;
+        $events = \App\Models\AuditEvent::count();
         foreach (['complete', 'return'] as $action) {
             $this->decide($budget, $action, ['comment' => 'Budget correction.'])
                 ->assertSessionHasErrors('workflow');
+            $this->assertSame($revision, $this->document()->revision);
+            $this->assertSame('submitted', $this->document()->review_status);
+            $this->assertSame('pending', $this->document()->budget_review);
+            $this->assertSame($events, \App\Models\AuditEvent::count());
         }
         $this->decide($planning, 'complete')->assertSessionHasNoErrors();
         $this->decide($budget, 'complete')->assertSessionHasNoErrors();
