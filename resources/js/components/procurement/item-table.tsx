@@ -38,6 +38,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
         opener.current = trigger;
         setSearch('');
         setCategory('');
+        setExpenseClass('');
         setPage(1);
         setSelection(null);
         setOpen(true);
