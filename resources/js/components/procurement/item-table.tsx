@@ -211,6 +211,20 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                     </select>
                                 </label>
                             </div>
+                            {(search || category || expenseClass) && (
+                                <button
+                                    type="button"
+                                    className={secondary + ' justify-self-start'}
+                                    onClick={() => {
+                                        setSearch('');
+                                        setCategory('');
+                                        setExpenseClass('');
+                                        setPage(1);
+                                    }}
+                                >
+                                    Clear filters
+                                </button>
+                            )}
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-slate-100">
