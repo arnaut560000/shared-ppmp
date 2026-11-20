@@ -215,7 +215,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-slate-100">
                                         <tr>
-                                            {['Code', 'Item description', 'Unit', 'Unit cost', ''].map((h, i) => (
+                                            {['Code', 'Item description', 'Class', 'Unit', 'Unit cost', ''].map((h, i) => (
                                                 <th key={i} className="p-2">
                                                     {h}
                                                 </th>
@@ -232,6 +232,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                                         {item.name}
                                                         <p className="text-xs text-slate-600">{item.specification}</p>
                                                     </td>
+                                                    <td className="p-2">{item.expense_class}</td>
                                                     <td className="p-2">{item.unit}</td>
                                                     <td className="p-2">{money(items.get(item.id)?.price_cents ?? item.price_cents)}</td>
                                                     <td className="p-2">
