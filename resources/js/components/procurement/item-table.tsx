@@ -130,7 +130,9 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                             {selection ? (selection.adding ? 'Add PPMP item from catalog' : 'Monthly item schedule') : 'Item catalog'}
                         </DialogTitle>
                         <DialogDescription id="ppmp-catalog-context">
-                            {selection ? 'Quantities are scheduled by month.' : 'Select an item for this procurement list.'}
+                            {selection
+                                ? `${selection.item.expense_class} item. Quantities are scheduled by month.`
+                                : 'Filter by MOOE or CO, search the catalogue, and select an item for this procurement list.'}
                         </DialogDescription>
                     </DialogHeader>
                     {selection ? (
