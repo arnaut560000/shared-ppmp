@@ -188,8 +188,8 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                         }}
                                     >
                                         <option value="">All items</option>
-                                        <option value="MOOE">MOOE</option>
-                                        <option value="CO">CO</option>
+                                        <option value="MOOE">MOOE — Maintenance and Other Operating Expenses</option>
+                                        <option value="CO">CO — Capital Outlay</option>
                                     </select>
                                 </label>
                                 <label className="text-sm">
