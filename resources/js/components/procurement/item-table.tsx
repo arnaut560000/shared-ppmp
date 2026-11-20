@@ -2,7 +2,7 @@ import QuarterlyBreakdown from './quarterly-breakdown';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRef, useState } from 'react';
 import MonthlyItem from './monthly-item';
-import { type Item, type Line, money, sum } from './schedule';
+import { type Expense, type Item, type Line, money, sum } from './schedule';
 
 type Props = {
     lines: Line[];
@@ -20,12 +20,14 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
     const [selection, setSelection] = useState<Selection | null>(null);
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('');
+    const [expenseClass, setExpenseClass] = useState<Expense | ''>('');
     const [page, setPage] = useState(1);
     const opener = useRef<HTMLButtonElement | null>(null);
     const categories = [...new Set(catalogue.map((item) => item.category).filter((value): value is string => Boolean(value)))].sort();
     const query = search.trim().toLowerCase();
     const matches = catalogue.filter(
         (item) =>
+            (!expenseClass || item.expense_class === expenseClass) &&
             (!category || item.category === category) &&
             [item.name, item.code, item.specification].some((value) => value?.toLowerCase().includes(query)),
     );
@@ -173,6 +175,20 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                             setPage(1);
                                         }}
                                     />
+                                </label>
+                                <label className="text-sm">
+                                    Expense classification
+                                    <select
+                                        className="mt-1 block rounded border p-2"
+                                        value={expenseClass}
+                                        onChange={(e) => {
+                                            setExpenseClass(e.target.value as Expense | '');
+                                        }}
+                                    >
+                                        <option value="">All items</option>
+                                        <option value="MOOE">MOOE</option>
+                                        <option value="CO">CO</option>
+                                    </select>
                                 </label>
                                 <label className="text-sm">
                                     Category
