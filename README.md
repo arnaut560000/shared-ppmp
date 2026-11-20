@@ -335,3 +335,20 @@ CREATE TABLE audit_events (
 ### Annual plan entry and review
 
 Open **My AIP** and select the fiscal year. Use **Create AIP** or **Edit AIP** for the plan details. Under **PPAs and Sub PPAs**, enter the expected output, performance indicator and physical target for each activity. **Review AIP** lists activities across all program pages with their allocated amounts, saved procurement costs and item-line counts. The office balance includes saved PPMP line costs and manual PS and FE once each. An assigned department account can submit its annual AIP from this summary after adding at least one Sub PPA. Submission records the figures reviewed. MPDC completes planning review first. Budget Office can then complete its review or return the AIP with a reason and an optional activity reference. MPDC may also return the AIP during planning review. The department can revise and resubmit, restarting both reviews. The Mayor can attest once both reviews are complete. Attestation locks AIP content and PPMP items and costs. Saved PPMP sheets can still proceed through GSO status review. Assign the MPDC role in Administration.
+
+
+### PPMP catalogue expense filter
+
+Open an editable PPMP and choose **Add item from catalog**. Use **Expense classification**
+to show **All items**, **MOOE — Maintenance and Other Operating Expenses**, or
+**CO — Capital Outlay**. This filter works together with the category selector and
+the item code, name, or specification search.
+
+The catalogue displays each item's classification and the matching result count.
+Changing classification starts at page 1. **Clear filters** resets all three filters;
+**Back to catalog** keeps the current filters, while opening a fresh item selection
+starts with all items again.
+
+Filtering does not reclassify items or change existing PPMP lines, prices, quantities,
+or MOOE/CO quarterly totals. An item's saved catalogue classification determines
+its expense group. No migration or reseeding is required for this update.
