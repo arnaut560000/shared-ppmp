@@ -270,7 +270,9 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                 </table>
                                 {!matches.length && (
                                     <p className="p-4 text-sm">
-                                        {catalogue.length ? 'No matching items.' : 'No active MOOE or CO catalogue items are available.'}
+                                        {catalogue.length
+                                            ? `No ${expenseClass || 'catalogue'} items match your search and filters. Try another search or clear the filters.`
+                                            : 'No active MOOE or CO catalogue items are available.'}
                                     </p>
                                 )}
                             </div>
