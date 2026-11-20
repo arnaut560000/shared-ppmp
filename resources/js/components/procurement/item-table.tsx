@@ -163,8 +163,8 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                         </>
                     ) : (
                         <>
-                            <div className="flex flex-wrap gap-3">
-                                <label className="min-w-48 flex-1 text-sm">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <label className="min-w-0 text-sm sm:col-span-2">
                                     Search items
                                     <input
                                         type="search"
@@ -177,10 +177,10 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                         }}
                                     />
                                 </label>
-                                <label className="text-sm">
+                                <label className="min-w-0 text-sm">
                                     Expense classification
                                     <select
-                                        className="mt-1 block rounded border p-2"
+                                        className="mt-1 block w-full min-w-0 rounded border p-2"
                                         value={expenseClass}
                                         onChange={(e) => {
                                             setExpenseClass(e.target.value as Expense | '');
@@ -192,10 +192,10 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                         <option value="CO">CO — Capital Outlay</option>
                                     </select>
                                 </label>
-                                <label className="text-sm">
+                                <label className="min-w-0 text-sm">
                                     Category
                                     <select
-                                        className="mt-1 block rounded border p-2"
+                                        className="mt-1 block w-full min-w-0 rounded border p-2"
                                         value={category}
                                         onChange={(e) => {
                                             setCategory(e.target.value);
@@ -290,7 +290,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                     </p>
                                 )}
                             </div>
-                            <div className="flex items-center justify-between text-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                                 <span role="status" aria-live="polite" aria-atomic="true">
                                     {matches.length} {expenseClass ? expenseClass + ' ' : ''}items · Page {currentPage} of {pages}
                                 </span>
