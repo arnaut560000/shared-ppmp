@@ -183,6 +183,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                         value={expenseClass}
                                         onChange={(e) => {
                                             setExpenseClass(e.target.value as Expense | '');
+                                            setPage(1);
                                         }}
                                     >
                                         <option value="">All items</option>
