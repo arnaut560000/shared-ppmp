@@ -291,8 +291,8 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                 )}
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                                <span>
-                                    {matches.length} items · Page {currentPage} of {pages}
+                                <span role="status" aria-live="polite" aria-atomic="true">
+                                    {matches.length} {expenseClass ? expenseClass + ' ' : ''}items · Page {currentPage} of {pages}
                                 </span>
                                 <div className="flex gap-2">
                                     <button type="button" className={secondary} disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
