@@ -195,7 +195,11 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                         className="mt-1 block w-full min-w-0 rounded border p-2"
                                         value={expenseClass}
                                         onChange={(e) => {
-                                            setExpenseClass(e.target.value as Expense | '');
+                                            const nextClass = e.target.value as Expense | '';
+                                            setExpenseClass(nextClass);
+                                            if (category && !categoryHasItems(category, nextClass)) {
+                                                setCategory('');
+                                            }
                                             setPage(1);
                                         }}
                                     >
