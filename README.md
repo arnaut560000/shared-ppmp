@@ -352,3 +352,16 @@ starts with all items again.
 Filtering does not reclassify items or change existing PPMP lines, prices, quantities,
 or MOOE/CO quarterly totals. An item's saved catalogue classification determines
 its expense group. No migration or reseeding is required for this update.
+
+
+Categories with no items in the chosen MOOE/CO classification remain visible but
+disabled. Switching classification resets an incompatible category to **All categories**.
+Choosing **All items** enables every listed category. Category availability depends
+on classification, independently of the current search text.
+
+### Unfinished PPMP approval drafts
+
+`app/Http/Controllers/PpmpApprovalControler.php` is an empty placeholder, and
+`resources/js/pages/ppmp-approval.tsx` is an unfinished page saved for further work.
+These drafts are not connected to approval routes or navigation. They do not
+activate the final PPMP approval workflow.
