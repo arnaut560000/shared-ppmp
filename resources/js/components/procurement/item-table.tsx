@@ -213,20 +213,34 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                     <select
                                         className="mt-1 block w-full min-w-0 rounded border p-2"
                                         value={category}
+                                        aria-describedby="ppmp-category-help"
                                         onChange={(e) => {
                                             setCategory(e.target.value);
                                             setPage(1);
                                         }}
                                     >
                                         <option value="">All categories</option>
-                                        {categories.map((c) => (
-                                            <option key={c} value={c} disabled={!categoryHasItems(c)}>
-                                                {c}
-                                            </option>
-                                        ))}
+                                        {categories.map((c) => {
+                                            const available = categoryHasItems(c);
+
+                                            return (
+                                                <option
+                                                    key={c}
+                                                    value={c}
+                                                    disabled={!available}
+                                                    className={available ? '' : 'text-slate-400'}
+                                                >
+                                                    {c}
+                                                    {!available ? ` — No ${expenseClass || 'available'} items` : ''}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </label>
                             </div>
+                            <p id="ppmp-category-help" className="text-xs text-slate-600">
+                                Categories without items in the selected expense classification are disabled.
+                            </p>
                             {(search || category || expenseClass) && (
                                 <button
                                     type="button"
