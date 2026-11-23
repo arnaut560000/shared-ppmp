@@ -103,9 +103,28 @@ class PpmpController extends Controller
                 && ! $legacy && $sheet
                 && in_array($sheet->status, ['draft', 'returned'], true) && $sheet->items->isNotEmpty(),
             'canReviewForGso' => $user->role === 'gso' && $sheet?->status === 'pending_gso' && $sheet->created_by !== $user->id,
-            'reviewHistory' => $sheet ? AuditEvent::where('subject_type', 'plan')->where('subject_id', $sheet->id)
-                ->where('office_id', $sheet->office_id)->whereIn('action', ['submit_to_gso', 'complete_gso_review', 'return_from_gso'])
-                ->latest('id')->get(['id', 'action', 'comment', 'created_at']) : [],
+            'reviewHistory' => $sheet
+                ? AuditEvent::where('subject_type', 'plan')
+                    ->where('subject_id', $sheet->id)
+                    ->where('office_id', $sheet->office_id)
+                    ->whereIn('action', [
+                        'submit_to_gso',
+                        'complete_gso_review',
+                        'return_from_gso',
+                        'approve',
+                        'return',
+                    ])
+                    ->with('user:id,name')
+                    ->latest('id')
+                    ->get(['id', 'user_id', 'action', 'comment', 'created_at'])
+                    ->map(fn (AuditEvent $event) => [
+                        'id' => $event->id,
+                        'action' => $event->action,
+                        'actor' => $event->user?->name ?? 'Former user',
+                        'comment' => $event->comment,
+                        'created_at' => $event->created_at,
+                    ])
+                : [],
             'canPrepare' => $canPrepare,
             'preparationLockedReason' => $ppa->aipDocument?->review_status === 'attested'
                 ? 'The Mayor has attested this AIP. Its PPMP items and costs are locked.'

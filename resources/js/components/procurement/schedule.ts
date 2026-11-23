@@ -34,7 +34,13 @@ export type Workspace = {
     available_for_sheet_cents: number | null;
     canSubmitToGso: boolean;
     canReviewForGso: boolean;
-    reviewHistory: { id: number; action: ReviewAction; comment: string | null; created_at: string }[];
+    reviewHistory: {
+        id: number;
+        action: ReviewAction | 'approve' | 'return';
+        actor: string;
+        comment: string | null;
+        created_at: string;
+    }[];
     canPrepare: boolean;
     preparationLockedReason: string | null;
     canEdit: boolean;

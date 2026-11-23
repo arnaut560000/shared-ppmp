@@ -5,6 +5,8 @@ const labels = {
     submit_to_gso: 'Submitted to GSO',
     complete_gso_review: 'GSO review completed',
     return_from_gso: 'Returned by GSO',
+    approve: 'Approved by Mayor',
+    return: 'Returned by Mayor',
 };
 const primary = 'rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white disabled:opacity-50';
 
@@ -50,7 +52,8 @@ export default function PpmpReview({ workspace, sheet, unsaved }: {
                 <ul className="divide-y border-t text-sm">
                     {workspace.reviewHistory.map((event) => (
                         <li key={event.id} className="py-2">
-                            {labels[event.action]} <time className="ml-2 text-slate-600">{event.created_at}</time>
+                            {labels[event.action]} · {event.actor}
+                            <time className="ml-2 text-slate-600">{event.created_at}</time>
                             {event.comment && <p className="mt-1 whitespace-pre-wrap break-words">{event.comment}</p>}
                         </li>
                     ))}
