@@ -30,6 +30,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('consolidated-ppmp/excel', \App\Http\Controllers\ConsolidatedPpmpController::class)
         ->name('ppmp.consolidated.xlsx');
     Route::get('ppmp-reviews', [PpmpController::class, 'index'])->name('ppmp.reviews');
+    Route::get('ppmp-approvals', [\App\Http\Controllers\PpmpApprovalController::class, 'index'])
+        ->name('ppmp.approvals');
+    Route::post('ppmp-approvals/{ppmp}', [\App\Http\Controllers\PpmpApprovalController::class, 'decide'])
+        ->whereNumber('ppmp')->name('ppmp.approvals.decide');
     Route::post('aips/{ppa}/ppmp/{ppmp}/review', [PpmpController::class, 'review'])->name('ppmp.review');
     Route::get('my-ppmps', [PpmpController::class, 'index'])->name('ppmp.index');
     Route::post('aips/{ppa}/ppmp', [PpmpController::class, 'store'])->name('ppmp.store');
