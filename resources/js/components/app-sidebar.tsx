@@ -11,6 +11,9 @@ export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
 
     const navigation: NavItem[] = [
+        ...(auth.user.role === 'mayor'
+            ? [{ title: 'PPMPs for approval', url: '/ppmp-approvals', icon: ClipboardList }]
+            : []),
         ...(auth.user.role === 'gso' || auth.user.role === 'admin'
             ? [{ title: 'Consolidated PPMP', url: '/consolidated-ppmp', icon: ClipboardList }]
             : []),

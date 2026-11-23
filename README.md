@@ -359,9 +359,9 @@ disabled. Switching classification resets an incompatible category to **All cate
 Choosing **All items** enables every listed category. Category availability depends
 on classification, independently of the current search text.
 
-### Unfinished PPMP approval drafts
+### Final PPMP review
 
-`app/Http/Controllers/PpmpApprovalControler.php` is an empty placeholder, and
-`resources/js/pages/ppmp-approval.tsx` is an unfinished page saved for further work.
-These drafts are not connected to approval routes or navigation. They do not
-activate the final PPMP approval workflow.
+After GSO completes its review, the Mayor can open **PPMPs for approval** and select
+the fiscal year. Approved sheets appear in **Consolidated PPMP**. Returning a sheet
+requires remarks. A return involving an attested AIP also requires explicit
+authorization to reopen it for corrections and another MPDC, Budget, and Mayor review.
