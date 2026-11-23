@@ -1,4 +1,5 @@
 import InputError from '@/components/input-error';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm, usePage } from '@inertiajs/react';
@@ -34,6 +35,85 @@ const fieldClass =
 
 const buttonClass =
     'rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50';
+
+function OfficeEditForm({ office, onSaved }: { office: Office; onSaved: () => void }) {
+    const form = useForm({ code: office.code, name: office.name });
+
+    return (
+        <form
+            className="space-y-4"
+            onSubmit={(event) => {
+                event.preventDefault();
+                form.patch(`/administration/offices/${office.id}`, {
+                    preserveScroll: true,
+                    onSuccess: onSaved,
+                });
+            }}
+        >
+            <label className="block text-sm font-medium">
+                Office code
+                <input
+                    className={fieldClass}
+                    value={form.data.code}
+                    maxLength={20}
+                    required
+                    onChange={(event) => form.setData('code', event.target.value.toUpperCase())}
+                />
+                <InputError message={form.errors.code} className="mt-1" />
+            </label>
+            <label className="block text-sm font-medium">
+                Office name
+                <input
+                    className={fieldClass}
+                    value={form.data.name}
+                    maxLength={255}
+                    required
+                    onChange={(event) => form.setData('name', event.target.value)}
+                />
+                <InputError message={form.errors.name} className="mt-1" />
+            </label>
+            <DialogFooter className="gap-2">
+                <DialogClose asChild>
+                    <button
+                        type="button"
+                        className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-muted"
+                        disabled={form.processing}
+                    >
+                        Cancel
+                    </button>
+                </DialogClose>
+                <button type="submit" className={buttonClass} disabled={form.processing || !form.isDirty}>
+                    {form.processing ? 'Saving…' : 'Save changes'}
+                </button>
+            </DialogFooter>
+        </form>
+    );
+}
+
+function OfficeEdit({ office }: { office: Office }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <button
+                    type="button"
+                    aria-label={`Edit office ${office.name}`}
+                    className="rounded-lg border px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-50"
+                >
+                    Edit
+                </button>
+            </DialogTrigger>
+            <DialogContent className="w-[calc(100%-2rem)]">
+                <DialogHeader>
+                    <DialogTitle>Edit office</DialogTitle>
+                    <DialogDescription>Update the code and name for {office.name}.</DialogDescription>
+                </DialogHeader>
+                <OfficeEditForm office={office} onSaved={() => setOpen(false)} />
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function UserAccessForm({
     account,
@@ -305,6 +385,7 @@ export default function Administration({
                                     <tr>
                                         <th scope="col" className="px-5 py-3">Code</th>
                                         <th scope="col" className="px-5 py-3">Office name</th>
+                                        <th scope="col" className="px-5 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -314,6 +395,9 @@ export default function Administration({
                                                 {office.code}
                                             </td>
                                             <td className="px-5 py-4">{office.name}</td>
+                                            <td className="px-5 py-4 text-right">
+                                                <OfficeEdit office={office} />
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

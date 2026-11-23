@@ -47,24 +47,7 @@ class AdministrationController extends Controller
     {
         PlanningAccess::roles($request->user(), ['admin']);
 
-        $request->merge([
-            'code' => is_string($request->input('code'))
-                ? strtoupper(trim($request->input('code')))
-                : $request->input('code'),
-        ]);
-
-        $data = $request->validate([
-            'code' => [
-                'required',
-                'string',
-                'max:20',
-                'regex:/^[A-Z0-9-]+$/',
-                Rule::unique('offices', 'code'),
-            ],
-            'name' => ['required', 'string', 'max:255'],
-        ], [
-            'code.regex' => 'Use letters, numbers, and hyphens only.',
-        ]);
+        $data = $this->validateOffice($request);
 
         DB::transaction(function () use ($request, $data) {
             $office = Office::create($data);
@@ -82,6 +65,61 @@ class AdministrationController extends Controller
 
         return to_route('administration.index')
             ->with('success', 'Office created successfully.');
+    }
+
+    public function updateOffice(Request $request, Office $office): RedirectResponse
+    {
+        PlanningAccess::roles($request->user(), ['admin']);
+
+        DB::transaction(function () use ($request, $office) {
+            $office = Office::query()->lockForUpdate()->findOrFail($office->id);
+            $data = $this->validateOffice($request, $office);
+            $before = $office->only(['code', 'name']);
+            $office->fill($data);
+
+            if ($office->isDirty()) {
+                $office->save();
+
+                PlanningService::audit(
+                    $request->user(),
+                    'office',
+                    $office->id,
+                    'updated',
+                    $office->id,
+                    null,
+                    ['before' => $before, 'after' => $office->only(['code', 'name'])],
+                );
+            }
+        }, 3);
+
+        return to_route('administration.index')
+            ->with('success', 'Office updated successfully.');
+    }
+
+    private function validateOffice(Request $request, ?Office $office = null): array
+    {
+        $code = $request->input('code');
+        $request->merge([
+            'code' => is_string($code) ? strtoupper(trim($code)) : $code,
+        ]);
+
+        $uniqueCode = Rule::unique('offices', 'code');
+        if ($office !== null) {
+            $uniqueCode->ignore($office);
+        }
+
+        return $request->validate([
+            'code' => [
+                'required',
+                'string',
+                'max:20',
+                'regex:/^[A-Z0-9-]+$/',
+                $uniqueCode,
+            ],
+            'name' => ['required', 'string', 'max:255'],
+        ], [
+            'code.regex' => 'Use letters, numbers, and hyphens only.',
+        ]);
     }
 
     public function updateUser(Request $request, User $user): RedirectResponse

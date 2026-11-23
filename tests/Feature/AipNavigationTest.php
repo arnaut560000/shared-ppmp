@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditEvent;
+use App\Models\Office;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -37,6 +39,43 @@ class AipNavigationTest extends TestCase
         $this->post('/administration/offices', ['code' => 'ICT', 'name' => 'ICT Office'])
             ->assertSessionHasNoErrors()->assertRedirect(route('administration.index'));
         $this->assertDatabaseHas('offices', ['code' => 'ICT', 'name' => 'ICT Office']);
+    }
+
+    public function test_admin_can_edit_an_office_without_breaking_user_assignments(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $office = Office::create(['code' => 'ICT', 'name' => 'ICT Office']);
+        $employee = User::factory()->create(['role' => 'office', 'office_id' => $office->id]);
+
+        $this->actingAs($admin)->patch('/administration/offices/'.$office->id, [
+            'code' => ' ict ', 'name' => 'Information and Communications Technology',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('administration.index'));
+
+        $this->assertDatabaseHas('offices', [
+            'id' => $office->id, 'code' => 'ICT', 'name' => 'Information and Communications Technology',
+        ]);
+        $this->assertEquals($office->id, $employee->fresh()->office_id);
+
+        $event = AuditEvent::where('subject_type', 'office')->where('subject_id', $office->id)->sole();
+        $this->assertSame('updated', $event->action);
+        $this->assertSame('ICT Office', $event->metadata['before']['name']);
+        $this->assertSame('Information and Communications Technology', $event->metadata['after']['name']);
+    }
+
+    public function test_office_edit_rejects_duplicate_codes_and_non_admin_users(): void
+    {
+        $office = Office::create(['code' => 'ICT', 'name' => 'ICT Office']);
+        Office::create(['code' => 'GSO', 'name' => 'General Services Office']);
+        $url = '/administration/offices/'.$office->id;
+        $changes = ['code' => 'gso', 'name' => 'Other office'];
+
+        $this->actingAs(User::factory()->create(['role' => 'office', 'office_id' => $office->id]))
+            ->patchJson($url, $changes)->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->patchJson($url, $changes)->assertUnprocessable()->assertJsonValidationErrors('code');
+
+        $this->assertDatabaseHas('offices', ['id' => $office->id, 'code' => 'ICT', 'name' => 'ICT Office']);
     }
 
     public function test_office_users_still_cannot_access_administration(): void

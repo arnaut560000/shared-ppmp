@@ -65,6 +65,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('administration/offices', [AdministrationController::class, 'storeOffice'])
         ->name('administration.offices.store');
+    Route::patch('administration/offices/{office}', [AdministrationController::class, 'updateOffice'])
+        ->whereNumber('office')->name('administration.offices.update');
 
     Route::patch('administration/users/{user}', [AdministrationController::class, 'updateUser'])
         ->name('administration.user.update');
