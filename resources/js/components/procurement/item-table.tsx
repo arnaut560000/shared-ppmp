@@ -24,6 +24,16 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
     const [page, setPage] = useState(1);
     const opener = useRef<HTMLButtonElement | null>(null);
     const categories = [...new Set(catalogue.map((item) => item.category).filter((value): value is string => Boolean(value)))].sort();
+    function categoryHasItems(
+        categoryName: string,
+        classification: Expense | '' = expenseClass,
+    ): boolean {
+        return catalogue.some(
+            (item) =>
+                item.category === categoryName &&
+                (!classification || item.expense_class === classification),
+        );
+    }
     const query = search.trim().toLowerCase();
     const matches = catalogue.filter(
         (item) =>
@@ -206,7 +216,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                                     >
                                         <option value="">All categories</option>
                                         {categories.map((c) => (
-                                            <option key={c} value={c}>
+                                            <option key={c} value={c} disabled={!categoryHasItems(c)}>
                                                 {c}
                                             </option>
                                         ))}
