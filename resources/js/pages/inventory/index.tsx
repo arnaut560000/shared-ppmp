@@ -178,7 +178,12 @@ export default function InventoryIndex({ offices, assets, filters, department, r
                             {receivingView ? 'Equipment recorded as received by each office.' : 'Equipment and current holders by office.'}
                         </p>
                     </div>
-                    {canManage && offices.length > 0 && <RegisterEquipment offices={offices} officeId={filters.office_id} />}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="outline" asChild>
+                            <Link href="/inventory/purchase-orders">Purchase orders and receipts</Link>
+                        </Button>
+                        {canManage && offices.length > 0 && <RegisterEquipment offices={offices} officeId={filters.office_id} />}
+                    </div>
                 </header>
 
                 {department && !selectedOffice ? (

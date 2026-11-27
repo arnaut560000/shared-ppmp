@@ -8,6 +8,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\OfficeBudgetController;
 use App\Http\Controllers\PlanningDeletionController;
 use App\Http\Controllers\PpmpController;
+use App\Http\Controllers\PpmpReceivingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -62,6 +63,15 @@ Route::middleware(['auth'])->group(function () {
         ->name('aips.update');
 
     Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('inventory/purchase-orders', [PpmpReceivingController::class, 'index'])->name('inventory.purchase-orders');
+    Route::prefix('inventory/ppmp-items/{item}/quarters/{quarter}')
+        ->where(['item' => '[0-9]+', 'quarter' => '[1-4]'])
+        ->group(function () {
+            Route::get('/', [PpmpReceivingController::class, 'show'])->name('inventory.ppmp-receiving.show');
+            Route::post('orders', [PpmpReceivingController::class, 'storeOrder'])->name('inventory.ppmp-receiving.orders');
+            Route::post('orders/{order}/receipts', [PpmpReceivingController::class, 'storeReceipt'])
+                ->whereNumber('order')->name('inventory.ppmp-receiving.receipts');
+        });
     Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
     Route::get('inventory/{asset}', [InventoryController::class, 'show'])
         ->whereNumber('asset')->name('inventory.show');
