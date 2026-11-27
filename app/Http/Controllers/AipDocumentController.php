@@ -15,9 +15,12 @@ use Inertia\Response;
 
 class AipDocumentController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
+        if ($user->role === 'treasurer') {
+            return to_route('procurement.app.index');
+        }
         PlanningAccess::roles($user, ['admin', 'office', 'budget', 'mayor', 'procurement', 'gso', 'inventory', 'mpdc']);
         $data = $request->validate(['year' => ['nullable', 'integer', 'between:2020,2100']]);
         $year = (int) ($data['year'] ?? now()->year);

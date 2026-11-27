@@ -14,6 +14,12 @@ export function AppSidebar() {
     const inventoryLabel = role === 'office' ? 'My Office Inventory' : role === 'procurement' ? 'Receiving Records' : 'Inventory';
 
     const navigation: NavItem[] = [
+        ...(typeof auth.user.role === 'string' && ['procurement', 'mayor', 'treasurer', 'gso', 'office', 'admin'].includes(auth.user.role)
+            ? [{ title: 'Annual Procurement Plan', url: '/procurement/app', icon: ClipboardList }]
+            : []),
+        ...(typeof auth.user.role === 'string' && ['office', 'treasurer', 'gso', 'procurement', 'admin'].includes(auth.user.role)
+            ? [{ title: 'Purchase Requests', url: '/procurement/requests', icon: ClipboardList }]
+            : []),
         ...(typeof role === 'string' && ['inventory', 'gso', 'admin', 'office', 'procurement'].includes(role)
             ? [{ title: inventoryLabel, url: '/inventory', icon: Package }]
             : []),
@@ -53,7 +59,7 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={navigation}>
-                    <AipManagementNav />
+                    {auth.user.role !== 'treasurer' && <AipManagementNav />}
                 </NavMain>
             </SidebarContent>
 

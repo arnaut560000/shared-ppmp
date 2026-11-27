@@ -22,6 +22,7 @@ class AdministrationController extends Controller
         'budget' => 'Budget Office',
         'mpdc' => 'Municipal Planning and Development Coordinator',
         'mayor' => 'Mayor / Approving Authority',
+        'treasurer' => 'Municipal Treasurer',
         'procurement' => 'BAC / Procurement Office',
         'gso' => 'General Services Office',
         'inventory' => 'Supply / Inventory Office',

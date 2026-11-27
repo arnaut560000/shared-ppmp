@@ -31,6 +31,21 @@ Route::middleware(['auth'])->group(function () {
         ->name('ppmp.consolidated');
     Route::get('consolidated-ppmp/excel', \App\Http\Controllers\ConsolidatedPpmpController::class)
         ->name('ppmp.consolidated.xlsx');
+    Route::prefix('procurement')->name('procurement.')->group(function () {
+        Route::get('app', [\App\Http\Controllers\AnnualProcurementController::class, 'index'])->name('app.index');
+        Route::post('app/{year}/build', [\App\Http\Controllers\AnnualProcurementController::class, 'build'])
+            ->whereNumber('year')->name('app.build');
+        Route::post('app/{year}/decision', [\App\Http\Controllers\AnnualProcurementController::class, 'decide'])
+            ->whereNumber('year')->name('app.decide');
+
+        Route::get('requests', [\App\Http\Controllers\PurchaseRequestController::class, 'index'])->name('requests.index');
+        Route::post('requests', [\App\Http\Controllers\PurchaseRequestController::class, 'store'])->name('requests.store');
+        Route::patch('requests/{pr}', [\App\Http\Controllers\PurchaseRequestController::class, 'resubmit'])
+            ->whereNumber('pr')->name('requests.resubmit');
+        Route::post('requests/{pr}/decision', [\App\Http\Controllers\PurchaseRequestController::class, 'decide'])
+            ->whereNumber('pr')->name('requests.decide');
+    });
+
     Route::get('ppmp-reviews', [PpmpController::class, 'index'])->name('ppmp.reviews');
     Route::get('ppmp-approvals', [\App\Http\Controllers\PpmpApprovalController::class, 'index'])
         ->name('ppmp.approvals');
