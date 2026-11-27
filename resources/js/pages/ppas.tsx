@@ -39,6 +39,8 @@ type Props = {
     canWrite: boolean;
     listUrl: string;
     workspaceUrl: string;
+    search: string;
+    programCount: number;
     plans: {
         data: Program[];
         total: number;
@@ -436,12 +438,13 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function Ppas(props: Props) {
-    return <Workspace key={props.document.office.id + '-' + props.year + '-' + props.plans.current_page} {...props} />;
+    return <Workspace key={props.document.office.id + '-' + props.year + '-' + props.plans.current_page + '-' + props.search} {...props} />;
 }
 
 function Workspace(props: Props) {
     const { document, year, plans, budget, canWrite, editorVisible, listUrl, workspaceUrl } = props;
-    const [openPrograms, setOpenPrograms] = useState<number[]>(plans.data.slice(0, 1).map((p) => p.id));
+    const [query, setQuery] = useState(props.search);
+    const [openPrograms, setOpenPrograms] = useState<number[]>((props.search ? plans.data : plans.data.slice(0, 1)).map((p) => p.id));
     const [selected, setSelected] = useState<number | null>(null);
     const [editInfo, setEditInfo] = useState(false);
     const group = plans.data.find((p) => p.id === selected || p.children.some((a) => a.id === selected));
@@ -487,7 +490,7 @@ function Workspace(props: Props) {
                             {(
                                 [
                                     ['Total AIP amount', money(budget.spent_cents), Coins, 'border-blue-200 bg-blue-50 text-blue-900'],
-                                    ['Total PPAs', plans.total, CheckCircle2, 'border-emerald-200 bg-emerald-50 text-emerald-900'],
+                                    ['Total PPAs', props.programCount, CheckCircle2, 'border-emerald-200 bg-emerald-50 text-emerald-900'],
                                     ['Total Sub PPAs', props.ppaCount, Puzzle, 'border-violet-200 bg-violet-50 text-violet-900'],
                                 ] as const
                             ).map(([label, value, Icon, tint]) => (
@@ -522,10 +525,38 @@ function Workspace(props: Props) {
                                     </Link>
                                 )}
                             </header>
+                            <form className="border-b border-blue-100 p-3" onSubmit={(event) => {
+                                event.preventDefault();
+                                const search = query.trim();
+                                router.get(workspaceUrl, search ? { year, search } : { year }, { preserveScroll: true });
+                            }}>
+                                <label htmlFor="aip-search" className="text-xs font-semibold">Search PPAs and Sub PPAs</label>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                    <input id="aip-search" className={inputClass + ' mt-0 min-w-[10rem] flex-1'}
+                                        type="search" placeholder="Title or reference code" maxLength={120}
+                                        value={query} onChange={(event) => setQuery(event.target.value)} />
+                                    <button type="submit" className={buttonClass}>Search</button>
+                                    {(query || props.search) && (
+                                        <button type="button" className={outline} onClick={() => {
+                                            setQuery('');
+                                            if (props.search) router.get(workspaceUrl, { year }, { preserveScroll: true });
+                                        }}>Clear</button>
+                                    )}
+                                </div>
+                                {props.search && <p role="status" className="mt-2 text-xs text-slate-600">
+                                    {plans.total} matching {plans.total === 1 ? 'PPA group' : 'PPA groups'}
+                                </p>}
+                            </form>
                             <div className="divide-y divide-blue-100">
-                                {plans.data.length === 0 && <p className="p-5 text-slate-600">No PPAs for this fiscal year.</p>}
+                                {plans.data.length === 0 && <p className="p-5 text-slate-600">
+                                    {props.search ? 'No PPAs or Sub PPAs match your search.' : 'No PPAs for this fiscal year.'}
+                                </p>}
                                 {plans.data.map((program) => {
                                     const open = openPrograms.includes(program.id);
+                                    const search = props.search.toLowerCase();
+                                    const matches = (row: { title: string; reference: string }) =>
+                                        [row.title, row.reference].some((text) => text.toLowerCase().includes(search));
+                                    const shownChildren = !search || matches(program) ? program.children : program.children.filter(matches);
                                     return (
                                         <div key={program.id}>
                                             <div
@@ -557,6 +588,7 @@ function Workspace(props: Props) {
                                                     )}
                                                     <span>
                                                         <strong className="break-words">{program.title}</strong>
+                                                        {props.search && <span className="mt-1 block text-xs text-slate-600">{program.reference}</span>}
                                                         <span className="mt-1 block text-xs">
                                                             {money(program.total_cents)}{' '}
                                                             <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-blue-800">
@@ -581,7 +613,7 @@ function Workspace(props: Props) {
                                                     {program.children.length === 0 && (
                                                         <p className="py-2 text-xs text-slate-500">No Sub PPAs under this PPA.</p>
                                                     )}
-                                                    {program.children.map((ppa) => (
+                                                    {shownChildren.map((ppa) => (
                                                         <button
                                                             type="button"
                                                             aria-pressed={selected === ppa.id}
@@ -597,6 +629,7 @@ function Workspace(props: Props) {
                                                             <FileText size={16} className="mt-0.5 shrink-0 text-blue-600" />
                                                             <span>
                                                                 <strong>{ppa.title}</strong>
+                                                                {props.search && <span className="mt-1 block text-xs text-slate-600">{ppa.reference}</span>}
                                                                 <span className="mt-1 block text-xs text-slate-600">
                                                                     {money(ppa.total_cents)} · {ppa.item_count} PPMP item lines
                                                                 </span>
