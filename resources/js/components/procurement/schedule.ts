@@ -21,6 +21,7 @@ export type SavedItem = Omit<Item, 'id'> & {
     quarterly_quantities: number[] | null;
 };
 export type Sheet = { id: number; reference: string; status: string; total_cents: number };
+export type ReceivingByItem = Record<number, ({ ordered: number; received: number; url: string } | null)[]>;
 export type Workspace = {
     ppa: { id: number; reference: string; title: string; fiscal_year: number; fund_source: string; status: string };
     office: string;
@@ -30,6 +31,7 @@ export type Workspace = {
     reference: string;
     selected: { id: number; reference: string; status: string; version: number; items: SavedItem[] } | null;
     catalogue: Item[];
+    receiving: ReceivingByItem | null;
     budget: { ceiling_cents: number | null; spent_cents: number; remaining_cents: number | null };
     available_for_sheet_cents: number | null;
     canSubmitToGso: boolean;

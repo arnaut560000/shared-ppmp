@@ -112,6 +112,7 @@ function Editor(p: Workspace) {
                 items={items}
                 catalogue={p.catalogue}
                 editable={editable}
+                receiving={p.receiving}
                 onChange={(lines) => form.setData('items', lines)}
             />
             <AllocationSummary budget={p.budget} listCost={listCost} remaining={remaining} />
@@ -184,7 +185,7 @@ export default function Ppmp(p: Workspace) {
                     <section className="space-y-3">
                         <h2 className="font-semibold">Saved quarterly list · Read only</h2>
                         <PpmpOutputButtons workspace={p} />
-                        <QuarterlyBreakdown rows={p.selected.items} />
+                        <QuarterlyBreakdown rows={p.selected.items} receiving={p.receiving} />
                     </section>
                 ) : p.selected || p.canEdit ? (
                     <Editor key={[p.ppa.id, p.selected?.id ?? 'new', p.selected?.version ?? 0].join('-')} {...p} />

@@ -1,5 +1,6 @@
+import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
-import { type SavedItem, money, months, quarters, sum } from './schedule';
+import { type ReceivingByItem, type SavedItem, money, months, quarters, sum } from './schedule';
 
 type Row = Pick<SavedItem,
     'catalogue_item_id' | 'code' | 'name' | 'unit' | 'expense_class' |
@@ -13,7 +14,7 @@ const classes = [
 
 const periods = ['Q1 · Jan–Mar', 'Q2 · Apr–Jun', 'Q3 · Jul–Sep', 'Q4 · Oct–Dec'];
 
-export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
+export default function QuarterlyBreakdown({ rows, receiving }: { rows: Row[]; receiving?: ReceivingByItem | null }) {
     if (!rows.length) {
         return <p className="p-4 text-sm">No items in this list yet.</p>;
     }
@@ -83,6 +84,10 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                 </table>
             </div>
 
+            {receiving && <p className="text-xs text-slate-600">
+                Delivery progress is grouped by the original planned quarter. Open orders and receipts to see actual delivery dates.
+            </p>}
+
             {groups.map(({ code, label, items }) => (
                 <section key={code} className="overflow-x-auto rounded-lg border">
                     <h3 className="bg-slate-50 p-3 font-semibold">{label}</h3>
@@ -122,14 +127,28 @@ export default function QuarterlyBreakdown({ rows }: { rows: Row[] }) {
                                             {money(row.price_cents)} / {row.unit}
                                         </td>
 
-                                        {quantities.map((qty, i) => (
-                                            <td key={i} className={numberCell}>
-                                                {money(costs[i])}
-                                                <div className="text-xs text-slate-600">
-                                                    {qty} {row.unit}
-                                                </div>
-                                            </td>
-                                        ))}
+                                        {quantities.map((qty, i) => {
+                                            const progress = receiving?.[row.catalogue_item_id]?.[i];
+
+                                            return (
+                                                <td key={i} className={numberCell}>
+                                                    {money(costs[i])}
+                                                    <div className="text-xs text-slate-600">
+                                                        {qty} {row.unit}{progress && ' planned'}
+                                                    </div>
+                                                    {progress && (
+                                                        <div className="mt-1 space-y-1 border-t pt-1 text-xs">
+                                                            <div>{progress.received} received · {qty - progress.received} remaining</div>
+                                                            <div>{progress.ordered} ordered</div>
+                                                            <Link href={progress.url} className="text-blue-700 underline"
+                                                                aria-label={'Orders and receipts for ' + row.name + ', planned Q' + (i + 1)}>
+                                                                Orders and receipts
+                                                            </Link>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
 
                                         <td className={numberCell}>
                                             <strong>{money(sum(costs))}</strong>

@@ -2,20 +2,21 @@ import QuarterlyBreakdown from './quarterly-breakdown';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRef, useState } from 'react';
 import MonthlyItem from './monthly-item';
-import { type Expense, type Item, type Line, money, sum } from './schedule';
+import { type Expense, type Item, type Line, money, type ReceivingByItem, sum } from './schedule';
 
 type Props = {
     lines: Line[];
     items: Map<number, Item>;
     catalogue: Item[];
     editable: boolean;
+    receiving?: ReceivingByItem | null;
     onChange: (lines: Line[]) => void;
 };
 type Selection = { item: Item; months: number[]; adding: boolean };
 const primary = 'rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50';
 const secondary = 'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50';
 
-export default function ItemTable({ lines, items, catalogue, editable, onChange }: Props) {
+export default function ItemTable({ lines, items, catalogue, editable, receiving, onChange }: Props) {
     const [open, setOpen] = useState(false);
     const [selection, setSelection] = useState<Selection | null>(null);
     const [search, setSearch] = useState('');
@@ -91,7 +92,7 @@ export default function ItemTable({ lines, items, catalogue, editable, onChange 
                     )}
                 </div>
             ))}
-            {lines.every(line => items.has(line.catalogue_item_id)) && <QuarterlyBreakdown rows={lines.map(line => {
+            {lines.every(line => items.has(line.catalogue_item_id)) && <QuarterlyBreakdown receiving={receiving} rows={lines.map(line => {
                 const item = items.get(line.catalogue_item_id)!;
 
                 return {

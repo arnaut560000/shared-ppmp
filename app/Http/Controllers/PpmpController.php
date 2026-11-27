@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Services\OfficeBudgetService;
 use App\Services\PlanningAccess;
 use App\Services\PlanningService;
+use App\Services\PpmpReceiving;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -92,6 +93,7 @@ class PpmpController extends Controller
             'sheets' => $sheets,
             'selected' => $sheet ? [...$sheet->only(['id', 'reference', 'version', 'status']), 'items' => $sheet->items] : null,
             'reference' => $reference,
+            'receiving' => $sheet?->status === 'approved' ? PpmpReceiving::summary($sheet) : null,
             'budget' => $budget,
             'available_for_sheet_cents' => $available,
             // Older clients render two columns. Both draw on the same office balance.
