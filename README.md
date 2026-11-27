@@ -58,7 +58,7 @@ Laravel 12 was selected for compatibility with the installed PHP 8.2 runtime. La
 
 ## Planning backend foundation
 
-The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. The Dashboard remains removed; office budget allocation is available to Budget Office and Admin. Login and account-verification flows lead to /aips. Annual AIP submission and review are available on the AIP summary. Catalogue management, APP consolidation, and procurement/inventory screens remain future work.
+The planning migrations, models, and services are now included. They support office budget ceilings, AIP/PPMP approval rules, quarterly quantities, saved catalogue prices, audit events, and approved-PPMP report aggregation. Administration and AIP draft creation/editing have connected screens. The Dashboard remains removed; office budget allocation is available to Budget Office and Admin. Login and account-verification flows lead to /aips. Treasurer accounts are redirected from there to the Annual Procurement Plan. Annual AIP submission and review are available on the AIP summary. The system also includes APP consolidation, the purchase request workflow, and equipment inventory.
 
 PHP requires the BCMath and PDO SQLite extensions. After pulling this change into an existing local setup:
 
@@ -365,3 +365,7 @@ After GSO completes its review, the Mayor can open **PPMPs for approval** and se
 the fiscal year. Approved sheets appear in **Consolidated PPMP**. Returning a sheet
 requires remarks. A return involving an attested AIP also requires explicit
 authorization to reopen it for corrections and another MPDC, Budget, and Mayor review.
+
+## APP, purchase requests, and equipment inventory
+
+BAC builds the annual APP from approved PPMPs linked to attested AIPs. The Mayor approves or returns it. A department submits a PR against its own approved APP lines and their available quantities. The Treasurer can read the approved APP and approve or return the PR. After approval, GSO assigns the official PR number and BAC can open the numbered request. BAC links existing purchase orders to planned PPMP items. Supply / Inventory staff record accepted deliveries and register tagged equipment, while the PPMP tracks progress in the original planned quarter. Inventory records assignments, transfers, and returns by property tag. Run the pending migrations after pulling. Any local SQLite inventory or sample records are specific to that installation.
