@@ -274,19 +274,31 @@ class AipController extends Controller
         $listUrl = $workspaceUrl.'?year='.$year;
         $isProgram = $editing ? $editing->type === 'program' : $program === null;
 
+        $search = trim($request->validate(['search' => ['nullable', 'string', 'max:120']])['search'] ?? '');
+        $pattern = '%'.strtr($search, ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
+        $matches = fn ($query) => $query->where(fn ($fields) => $fields
+            ->whereRaw("LOWER(title) LIKE LOWER(?) ESCAPE '!'", [$pattern])
+            ->orWhereRaw("LOWER(reference) LIKE LOWER(?) ESCAPE '!'", [$pattern]));
+        $childrenInDocument = fn ($query) => $query
+            ->where('office_id', $document->office_id)
+            ->where('fiscal_year', $year)
+            ->where('aip_document_id', $document->id);
+
         $procurement = OfficeBudgetService::procurementByPpa($document->office_id, $year);
-        $plans = Plan::where('type', 'program')
+        $headings = Plan::where('type', 'program')
             ->where('aip_document_id', $document->id)
-            ->whereNotNull('aip_document_id')
-            ->with(['subPpas' => fn ($query) => $query
-                ->where('office_id', $document->office_id)
-                ->where('fiscal_year', $year)
-                ->where('aip_document_id', $document->id)
-                ->orderBy('id')])
+            ->where('office_id', $document->office_id)
+            ->where('fiscal_year', $year)
+            ->whereNotNull('aip_document_id');
+        $programCount = $search === '' ? null : (clone $headings)->count();
+        $plans = $headings
+            ->when($search !== '', fn ($query) => $query->where(fn ($group) => $matches($group)
+                ->orWhereHas('subPpas', fn ($children) => $matches($childrenInDocument($children)))))
+            ->with(['subPpas' => fn ($query) => $childrenInDocument($query)->orderBy('id')])
             ->orderByDesc('id')
             ->paginate(15)
             ->withPath($workspaceUrl)
-            ->appends(['year' => $year])
+            ->appends(['year' => $year, 'search' => $search !== '' ? $search : null])
             ->through(fn (Plan $heading) => [
                 'id' => $heading->id,
                 'reference' => $heading->reference,
@@ -371,6 +383,8 @@ class AipController extends Controller
             'listUrl' => $listUrl,
             'workspaceUrl' => $workspaceUrl,
             'plans' => $plans,
+            'search' => $search,
+            'programCount' => $programCount ?? $plans->total(),
             'budget' => [...$budget, 'allocated_cents' => $budget['spent_cents']],
             'isProgram' => $isProgram,
             'program' => $program?->only(['id', 'reference', 'title']),
