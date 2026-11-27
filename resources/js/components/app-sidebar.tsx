@@ -4,13 +4,19 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { ClipboardList, Settings } from 'lucide-react';
+import { ClipboardList, Package, Settings } from 'lucide-react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
 
+    const role = auth.user.role;
+    const inventoryLabel = role === 'office' ? 'My Office Inventory' : role === 'procurement' ? 'Receiving Records' : 'Inventory';
+
     const navigation: NavItem[] = [
+        ...(typeof role === 'string' && ['inventory', 'gso', 'admin', 'office', 'procurement'].includes(role)
+            ? [{ title: inventoryLabel, url: '/inventory', icon: Package }]
+            : []),
         ...(auth.user.role === 'mayor'
             ? [{ title: 'PPMPs for approval', url: '/ppmp-approvals', icon: ClipboardList }]
             : []),
