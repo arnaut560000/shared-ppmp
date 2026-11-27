@@ -4,6 +4,7 @@ use App\Http\Controllers\AdministrationController;
 use App\Http\Controllers\AipController;
 use App\Http\Controllers\AipDocumentController;
 use App\Http\Controllers\AipSummaryController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\OfficeBudgetController;
 use App\Http\Controllers\PlanningDeletionController;
 use App\Http\Controllers\PpmpController;
@@ -59,6 +60,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::put('aips/{plan}', [AipController::class, 'update'])
         ->name('aips.update');
+
+    Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
+    Route::get('inventory/{asset}', [InventoryController::class, 'show'])
+        ->whereNumber('asset')->name('inventory.show');
+    Route::post('inventory/{asset}/movements', [InventoryController::class, 'move'])
+        ->whereNumber('asset')->name('inventory.movements.store');
 
     Route::get('administration', [AdministrationController::class, 'index'])
         ->name('administration.index');
